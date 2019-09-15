@@ -1,17 +1,19 @@
 module Main exposing (main)
 
+import Board
 import Browser
 import Browser.Events exposing (onKeyPress)
 import Html exposing (Html, div, text)
 import Json.Decode as D
-import Svg exposing (Svg, g, rect, svg)
-import Svg.Attributes exposing (fill, height, stroke, strokeWidth, transform, viewBox, width, x, y)
+import Maybe.Extra as MaybeE
+import Piece exposing (Color(..), Piece(..))
 
 
 type alias Model =
-    { selected : Maybe Field
+    { selected : Maybe Piece
     , rotate : Int
     , inputBuffer : Maybe Char
+    , pieces : List Piece
     }
 
 
@@ -20,6 +22,7 @@ init _ =
     ( { selected = Nothing
       , rotate = 0
       , inputBuffer = Nothing
+      , pieces = Board.initPieces
       }
     , Cmd.none
     )
@@ -86,114 +89,47 @@ update msg model =
                         Just rank ->
                             let
                                 newSelection =
-                                    Just ( bufferedFile, rank )
+                                    ( bufferedFile, rank )
                             in
-                            ( { model
-                                | selected =
-                                    if newSelection == model.selected then
-                                        Nothing
+                            case model.selected of
+                                Just currentSelection ->
+                                    let
+                                        movedPiece =
+                                            Piece.move model.pieces newSelection currentSelection
 
-                                    else
-                                        newSelection
-                                , inputBuffer = Nothing
-                              }
-                            , Cmd.none
-                            )
+                                        pieces =
+                                            movedPiece
+                                                :: List.filter (\piece -> Piece.getField piece /= Piece.getField movedPiece) model.pieces
+                                    in
+                                    ( { model
+                                        | pieces = pieces
+                                        , selected = Nothing
+                                        , inputBuffer = Nothing
+                                      }
+                                    , Cmd.none
+                                    )
 
-
-type Color
-    = White
-    | Black
-    | Selected
-
-
-type alias Field =
-    ( Char, Int )
-
-
-fileToInt : Char -> Int
-fileToInt file =
-    case file of
-        'a' ->
-            1
-
-        'b' ->
-            2
-
-        'c' ->
-            3
-
-        'd' ->
-            4
-
-        'e' ->
-            5
-
-        'f' ->
-            6
-
-        'g' ->
-            7
-
-        'h' ->
-            8
-
-        _ ->
-            0
-
-
-viewField : Maybe Field -> Char -> Int -> Svg Msg
-viewField selected file rank =
-    rect
-        [ x <| String.fromInt ((fileToInt file - 1) * 100 + 1)
-        , y <| String.fromInt ((8 - rank) * 100 + 1)
-        , width "100"
-        , height "100"
-        , fill <|
-            case getColor selected file rank of
-                White ->
-                    "#fff"
-
-                Black ->
-                    "#000"
-
-                Selected ->
-                    "#05a"
-        , stroke "#000"
-        , strokeWidth "1"
-        ]
-        []
-
-
-cartesianProduct : List a -> List b -> (a -> b -> c) -> List c
-cartesianProduct xs ys combine =
-    List.concatMap (\x -> List.map (\y -> combine x y) ys) xs
-
-
-getColor : Maybe Field -> Char -> Int -> Color
-getColor selected file rank =
-    if selected == Just ( file, rank ) then
-        Selected
-
-    else if modBy 2 (fileToInt file + 7 - rank) == 0 then
-        White
-
-    else
-        Black
+                                Nothing ->
+                                    ( { model
+                                        | selected =
+                                            model.pieces
+                                                |> List.filter (\piece -> Piece.getField piece == newSelection)
+                                                |> List.head
+                                        , pieces =
+                                            model.pieces
+                                                |> List.filter (\piece -> Piece.getField piece /= newSelection)
+                                        , inputBuffer = Nothing
+                                      }
+                                    , Cmd.none
+                                    )
 
 
 view : Model -> Html Msg
 view model =
     div []
-        [ svg [ viewBox "0 0 802 802" ]
-            [ g
-                [ transform <| "rotate(" ++ String.fromInt model.rotate ++ " 401 401)" ]
-                (cartesianProduct
-                    [ 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h' ]
-                    (List.range 1 8)
-                    (viewField model.selected)
-                )
-            ]
+        [ Board.view 0
+            model.selected
+            (MaybeE.toList model.selected ++ model.pieces)
         , div []
             [ text <|
                 case model.inputBuffer of
@@ -202,7 +138,11 @@ view model =
                             Nothing ->
                                 ""
 
-                            Just ( file, rank ) ->
+                            Just selectedPiece ->
+                                let
+                                    ( file, rank ) =
+                                        Piece.getField selectedPiece
+                                in
                                 String.fromChar file ++ String.fromInt rank
 
                     Just bufferedFile ->
