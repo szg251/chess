@@ -37,6 +37,7 @@ type Msg
     | InputRank Int
     | Cancel
     | RotateOnTurnClicked
+    | Restart
 
 
 isValidFile : Char -> Bool
@@ -152,6 +153,16 @@ update msg model =
         RotateOnTurnClicked ->
             ( { model | rotateOnTurn = not model.rotateOnTurn }, Cmd.none )
 
+        Restart ->
+            ( { selected = Nothing
+              , inputBuffer = Nothing
+              , pieces = Board.initPieces
+              , turn = White
+              , rotateOnTurn = True
+              }
+            , Cmd.none
+            )
+
 
 view : Model -> Html Msg
 view model =
@@ -165,6 +176,7 @@ view model =
                 ]
                 []
             , label [ for "is-rotating" ] [ text "Rotate on turns" ]
+            , button [ onClick Restart ] [ text "Restart" ]
             ]
         , Board.view
             (if model.rotateOnTurn && model.turn == Black then
