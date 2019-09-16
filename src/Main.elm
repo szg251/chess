@@ -3,8 +3,8 @@ module Main exposing (main)
 import Board
 import Browser
 import Browser.Events exposing (onKeyDown)
-import Html exposing (Html, div, input, label, text)
-import Html.Attributes exposing (checked, for, id, type_, value)
+import Html exposing (Html, button, div, input, label, text)
+import Html.Attributes exposing (checked, for, id, style, type_)
 import Html.Events exposing (onClick)
 import Json.Decode as D
 import Maybe.Extra as MaybeE
@@ -175,7 +175,8 @@ view model =
             )
             model.selected
             (MaybeE.toList model.selected ++ model.pieces)
-        , div []
+        , div [] [ text "The pieces are controlled by keyboard commands like e2e4" ]
+        , div [ style "fontWeight" "bold" ]
             [ text <|
                 case model.inputBuffer of
                     Nothing ->
