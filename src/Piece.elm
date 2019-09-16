@@ -76,7 +76,11 @@ move otherPieces field piece =
         Just <|
             case piece of
                 Pawn color _ ->
-                    Pawn color field
+                    if Tuple.second field < 8 then
+                        Pawn color field
+
+                    else
+                        Queen color field
 
                 Rook color _ ->
                     Rook color field
