@@ -169,18 +169,34 @@ isLegalMove otherPieces ( nextFile, nextRank ) piece =
                         || (abs fileDiff == 1 && abs rankDiff == 0)
 
                 Pawn White _ ->
-                    if prevRank == 2 then
-                        (fileDiff == 0) && (rankDiff == 1 || rankDiff == 2)
+                    let
+                        hasEnemyPiece =
+                            List.any (\otherPiece -> getField otherPiece == ( nextFile, nextRank )) otherPieces
+                    in
+                    if not hasEnemyPiece then
+                        if prevRank == 2 then
+                            (fileDiff == 0) && (rankDiff == 1 || rankDiff == 2)
+
+                        else
+                            (fileDiff == 0) && (rankDiff == 1)
 
                     else
-                        (fileDiff == 0) && (rankDiff == 1)
+                        (abs fileDiff == 1) && (rankDiff == 1)
 
                 Pawn Black _ ->
-                    if prevRank == 7 then
-                        (fileDiff == 0) && (rankDiff == -1 || rankDiff == -2)
+                    let
+                        hasEnemyPiece =
+                            List.any (\otherPiece -> getField otherPiece == ( nextFile, nextRank )) otherPieces
+                    in
+                    if not hasEnemyPiece then
+                        if prevRank == 7 then
+                            (fileDiff == 0) && (rankDiff == -1 || rankDiff == -2)
+
+                        else
+                            (fileDiff == 0) && (rankDiff == -1)
 
                     else
-                        (fileDiff == 0) && (rankDiff == -1)
+                        (abs fileDiff == 1) && (rankDiff == -1)
 
         steps =
             let
