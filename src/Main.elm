@@ -13,6 +13,7 @@ type alias Model =
     { selected : Maybe Piece
     , inputBuffer : Maybe Char
     , pieces : List Piece
+    , turn : Color
     }
 
 
@@ -21,6 +22,7 @@ init _ =
     ( { selected = Nothing
       , inputBuffer = Nothing
       , pieces = Board.initPieces
+      , turn = White
       }
     , Cmd.none
     )
@@ -105,7 +107,8 @@ update msg model =
                                     model.pieces
                                         |> List.filter
                                             (\piece ->
-                                                Piece.getField piece == newSelection
+                                                (Piece.getField piece == newSelection)
+                                                    && (Piece.getColor piece == model.turn)
                                             )
                                         |> List.head
                             in
@@ -120,27 +123,38 @@ update msg model =
                             )
 
                         Just currentSelection ->
-                            let
-                                movedPiece =
-                                    Piece.move model.pieces newSelection currentSelection
+                            case Piece.move model.pieces newSelection currentSelection of
+                                Nothing ->
+                                    ( model, Cmd.none )
 
-                                pieces =
-                                    movedPiece
-                                        :: List.filter (\piece -> Piece.getField piece /= Piece.getField movedPiece) model.pieces
-                            in
-                            ( { model
-                                | pieces = pieces
-                                , selected = Nothing
-                                , inputBuffer = Nothing
-                              }
-                            , Cmd.none
-                            )
+                                Just movedPiece ->
+                                    ( { model
+                                        | pieces =
+                                            movedPiece
+                                                :: List.filter (\piece -> Piece.getField piece /= Piece.getField movedPiece) model.pieces
+                                        , selected = Nothing
+                                        , inputBuffer = Nothing
+                                        , turn =
+                                            if model.turn == White then
+                                                Black
+
+                                            else
+                                                White
+                                      }
+                                    , Cmd.none
+                                    )
 
 
 view : Model -> Html Msg
 view model =
     div []
-        [ Board.view 0
+        [ Board.view
+            (if model.turn == White then
+                0
+
+             else
+                180
+            )
             model.selected
             (MaybeE.toList model.selected ++ model.pieces)
         , div []

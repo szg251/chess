@@ -1,6 +1,5 @@
 module Piece exposing (Color(..), Field, Piece(..), getColor, getField, move, view)
 
-import Debug
 import Field exposing (fileToX, rankToY)
 import Icons.Bishop
 import Icons.King
@@ -71,70 +70,71 @@ getField =
     getColorAndField >> Tuple.second
 
 
-move : List Piece -> Field -> Piece -> Piece
+move : List Piece -> Field -> Piece -> Maybe Piece
 move otherPieces field piece =
     if isLegalMove otherPieces field piece then
-        case piece of
-            Pawn color _ ->
-                Pawn color field
+        Just <|
+            case piece of
+                Pawn color _ ->
+                    Pawn color field
 
-            Rook color _ ->
-                Rook color field
+                Rook color _ ->
+                    Rook color field
 
-            Knight color _ ->
-                Knight color field
+                Knight color _ ->
+                    Knight color field
 
-            Bishop color _ ->
-                Bishop color field
+                Bishop color _ ->
+                    Bishop color field
 
-            Queen color _ ->
-                Queen color field
+                Queen color _ ->
+                    Queen color field
 
-            King color _ ->
-                King color field
+                King color _ ->
+                    King color field
 
     else
-        piece
+        Nothing
 
 
-view : Piece -> Svg msg
-view piece =
+view : Int -> Piece -> Svg msg
+view rotate piece =
     case piece of
         Pawn White ( file, rank ) ->
-            Icons.Pawn.white (fileToX file) (rankToY rank)
+            Icons.Pawn.white rotate (fileToX file) (rankToY rank)
 
         Pawn Black ( file, rank ) ->
-            Icons.Pawn.black (fileToX file) (rankToY rank)
+            Icons.Pawn.black rotate (fileToX file) (rankToY rank)
 
         King White ( file, rank ) ->
-            Icons.King.white (fileToX file) (rankToY rank)
+            Icons.King.white rotate (fileToX file) (rankToY rank)
 
         King Black ( file, rank ) ->
-            Icons.King.black (fileToX file) (rankToY rank)
+            Icons.King.black rotate (fileToX file) (rankToY rank)
 
         Queen White ( file, rank ) ->
-            Icons.Queen.white (fileToX file) (rankToY rank)
+            Icons.Queen.white rotate (fileToX file) (rankToY rank)
 
         Queen Black ( file, rank ) ->
-            Icons.Queen.black (fileToX file) (rankToY rank)
+            Icons.Queen.black rotate (fileToX file) (rankToY rank)
 
         Rook White ( file, rank ) ->
-            Icons.Rook.white (fileToX file) (rankToY rank)
+            Icons.Rook.white rotate (fileToX file) (rankToY rank)
 
         Rook Black ( file, rank ) ->
-            Icons.Rook.black (fileToX file) (rankToY rank)
+            Icons.Rook.black rotate (fileToX file) (rankToY rank)
 
         Knight White ( file, rank ) ->
-            Icons.Knight.white (fileToX file) (rankToY rank)
+            Icons.Knight.white rotate (fileToX file) (rankToY rank)
 
         Knight Black ( file, rank ) ->
-            Icons.Knight.black (fileToX file) (rankToY rank)
+            Icons.Knight.black rotate (fileToX file) (rankToY rank)
 
         Bishop White ( file, rank ) ->
-            Icons.Bishop.white (fileToX file) (rankToY rank)
+            Icons.Bishop.white rotate (fileToX file) (rankToY rank)
 
         Bishop Black ( file, rank ) ->
-            Icons.Bishop.black (fileToX file) (rankToY rank)
+            Icons.Bishop.black rotate (fileToX file) (rankToY rank)
 
 
 isLegalMove : List Piece -> Field -> Piece -> Bool

@@ -52,10 +52,19 @@ view : Int -> Maybe Piece -> List Piece -> Svg msg
 view rotation selected pieces =
     let
         size =
-            String.fromInt (Field.fieldSize * 8 + 2)
+            Field.fieldSize * 8 + 2
 
         boardSize =
-            String.join " " [ "0 0", size, size ]
+            String.join " " [ "0 0", String.fromInt size, String.fromInt size ]
+
+        rotate =
+            "rotate("
+                ++ String.join " "
+                    [ String.fromInt rotation
+                    , String.fromInt (size // 2)
+                    , String.fromInt (size // 2)
+                    ]
+                ++ ")"
     in
     svg
         [ viewBox boardSize
@@ -63,11 +72,11 @@ view rotation selected pieces =
         , height "500"
         ]
         [ g
-            [ transform <| "rotate(" ++ String.fromInt rotation ++ " 401 401)" ]
+            [ transform rotate ]
             (cartesianProduct
                 [ 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h' ]
                 (List.range 1 8)
                 (Field.view (Maybe.map Piece.getField selected))
-                ++ List.map Piece.view pieces
+                ++ List.map (Piece.view rotation) pieces
             )
         ]
