@@ -1,4 +1,4 @@
-module Piece exposing (Color(..), Field, Piece(..), getField, move, view)
+module Piece exposing (Color(..), Field, Piece(..), getColor, getField, move, view)
 
 import Debug
 import Field exposing (fileToX, rankToY)

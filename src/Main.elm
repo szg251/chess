@@ -2,7 +2,7 @@ module Main exposing (main)
 
 import Board
 import Browser
-import Browser.Events exposing (onKeyPress)
+import Browser.Events exposing (onKeyDown)
 import Html exposing (Html, div, text)
 import Json.Decode as D
 import Maybe.Extra as MaybeE
@@ -11,7 +11,6 @@ import Piece exposing (Color(..), Piece(..))
 
 type alias Model =
     { selected : Maybe Piece
-    , rotate : Int
     , inputBuffer : Maybe Char
     , pieces : List Piece
     }
@@ -20,7 +19,6 @@ type alias Model =
 init : () -> ( Model, Cmd Msg )
 init _ =
     ( { selected = Nothing
-      , rotate = 0
       , inputBuffer = Nothing
       , pieces = Board.initPieces
       }
@@ -29,7 +27,9 @@ init _ =
 
 
 type Msg
-    = Input String
+    = InputFile Char
+    | InputRank Int
+    | Cancel
 
 
 isValidFile : Char -> Bool
@@ -76,52 +76,65 @@ stringToRank str =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        Input value ->
+        Cancel ->
+            ( { model
+                | inputBuffer = Nothing
+                , selected = Nothing
+                , pieces = MaybeE.toList model.selected ++ model.pieces
+              }
+            , Cmd.none
+            )
+
+        InputFile file ->
+            ( { model | inputBuffer = Just file }, Cmd.none )
+
+        InputRank rank ->
             case model.inputBuffer of
                 Nothing ->
-                    ( { model | inputBuffer = stringToFile value }, Cmd.none )
+                    ( model, Cmd.none )
 
                 Just bufferedFile ->
-                    case stringToRank value of
+                    let
+                        newSelection =
+                            ( bufferedFile, rank )
+                    in
+                    case model.selected of
                         Nothing ->
-                            ( model, Cmd.none )
-
-                        Just rank ->
                             let
-                                newSelection =
-                                    ( bufferedFile, rank )
+                                nextSelected =
+                                    model.pieces
+                                        |> List.filter
+                                            (\piece ->
+                                                Piece.getField piece == newSelection
+                                            )
+                                        |> List.head
                             in
-                            case model.selected of
-                                Just currentSelection ->
-                                    let
-                                        movedPiece =
-                                            Piece.move model.pieces newSelection currentSelection
+                            ( { model
+                                | selected = nextSelected
+                                , pieces =
+                                    model.pieces
+                                        |> List.filter (\piece -> Just piece /= nextSelected)
+                                , inputBuffer = Nothing
+                              }
+                            , Cmd.none
+                            )
 
-                                        pieces =
-                                            movedPiece
-                                                :: List.filter (\piece -> Piece.getField piece /= Piece.getField movedPiece) model.pieces
-                                    in
-                                    ( { model
-                                        | pieces = pieces
-                                        , selected = Nothing
-                                        , inputBuffer = Nothing
-                                      }
-                                    , Cmd.none
-                                    )
+                        Just currentSelection ->
+                            let
+                                movedPiece =
+                                    Piece.move model.pieces newSelection currentSelection
 
-                                Nothing ->
-                                    ( { model
-                                        | selected =
-                                            model.pieces
-                                                |> List.filter (\piece -> Piece.getField piece == newSelection)
-                                                |> List.head
-                                        , pieces =
-                                            model.pieces
-                                                |> List.filter (\piece -> Piece.getField piece /= newSelection)
-                                        , inputBuffer = Nothing
-                                      }
-                                    , Cmd.none
-                                    )
+                                pieces =
+                                    movedPiece
+                                        :: List.filter (\piece -> Piece.getField piece /= Piece.getField movedPiece) model.pieces
+                            in
+                            ( { model
+                                | pieces = pieces
+                                , selected = Nothing
+                                , inputBuffer = Nothing
+                              }
+                            , Cmd.none
+                            )
 
 
 view : Model -> Html Msg
@@ -154,12 +167,28 @@ view model =
 keyDecoder : D.Decoder Msg
 keyDecoder =
     D.field "key" D.string
-        |> D.map Input
+        |> D.andThen
+            (\key ->
+                if key == "Escape" then
+                    D.succeed Cancel
+
+                else
+                    case
+                        MaybeE.or
+                            (stringToFile key |> Maybe.map InputFile)
+                            (stringToRank key |> Maybe.map InputRank)
+                    of
+                        Just msg ->
+                            D.succeed msg
+
+                        Nothing ->
+                            D.fail ("invalid input: " ++ key)
+            )
 
 
 subscriptions : Model -> Sub Msg
 subscriptions _ =
-    onKeyPress keyDecoder
+    onKeyDown keyDecoder
 
 
 main : Program () Model Msg
