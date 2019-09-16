@@ -3,7 +3,7 @@ module Board exposing (initPieces, view)
 import Field
 import Piece exposing (Color(..), Piece(..))
 import Svg exposing (Svg, g, svg)
-import Svg.Attributes exposing (height, transform, viewBox, width)
+import Svg.Attributes exposing (height, style, viewBox, width)
 
 
 cartesianProduct : List a -> List b -> (a -> b -> c) -> List c
@@ -56,15 +56,6 @@ view rotation selected pieces =
 
         boardSize =
             String.join " " [ "0 0", String.fromInt size, String.fromInt size ]
-
-        rotate =
-            "rotate("
-                ++ String.join " "
-                    [ String.fromInt rotation
-                    , String.fromInt (size // 2)
-                    , String.fromInt (size // 2)
-                    ]
-                ++ ")"
     in
     svg
         [ viewBox boardSize
@@ -72,7 +63,11 @@ view rotation selected pieces =
         , height "500"
         ]
         [ g
-            [ transform rotate ]
+            [ style <|
+                "transition: all 1s ease-out;transform-origin:center;transform: rotate("
+                    ++ String.fromInt rotation
+                    ++ "deg);"
+            ]
             (cartesianProduct
                 [ 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h' ]
                 (List.range 1 8)
