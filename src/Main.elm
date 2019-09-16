@@ -3,7 +3,9 @@ module Main exposing (main)
 import Board
 import Browser
 import Browser.Events exposing (onKeyDown)
-import Html exposing (Html, div, text)
+import Html exposing (Html, div, input, label, text)
+import Html.Attributes exposing (checked, for, id, type_, value)
+import Html.Events exposing (onClick)
 import Json.Decode as D
 import Maybe.Extra as MaybeE
 import Piece exposing (Color(..), Piece(..))
@@ -14,6 +16,7 @@ type alias Model =
     , inputBuffer : Maybe Char
     , pieces : List Piece
     , turn : Color
+    , rotateOnTurn : Bool
     }
 
 
@@ -23,6 +26,7 @@ init _ =
       , inputBuffer = Nothing
       , pieces = Board.initPieces
       , turn = White
+      , rotateOnTurn = True
       }
     , Cmd.none
     )
@@ -32,6 +36,7 @@ type Msg
     = InputFile Char
     | InputRank Int
     | Cancel
+    | RotateOnTurnClicked
 
 
 isValidFile : Char -> Bool
@@ -144,16 +149,29 @@ update msg model =
                                     , Cmd.none
                                     )
 
+        RotateOnTurnClicked ->
+            ( { model | rotateOnTurn = not model.rotateOnTurn }, Cmd.none )
+
 
 view : Model -> Html Msg
 view model =
     div []
-        [ Board.view
-            (if model.turn == White then
-                0
+        [ div []
+            [ input
+                [ id "is-rotating"
+                , type_ "checkbox"
+                , checked model.rotateOnTurn
+                , onClick RotateOnTurnClicked
+                ]
+                []
+            , label [ for "is-rotating" ] [ text "Rotate on turns" ]
+            ]
+        , Board.view
+            (if model.rotateOnTurn && model.turn == Black then
+                180
 
              else
-                180
+                0
             )
             model.selected
             (MaybeE.toList model.selected ++ model.pieces)
