@@ -1,6 +1,7 @@
 module Board exposing (initPieces, view)
 
 import Field
+import File
 import Piece exposing (Color(..), Piece(..))
 import Svg exposing (Svg, g, svg)
 import Svg.Attributes exposing (height, style, viewBox, width)
@@ -13,38 +14,38 @@ cartesianProduct xs ys combine =
 
 initPieces : List Piece
 initPieces =
-    [ Pawn Black ( 'a', 7 )
-    , Pawn Black ( 'b', 7 )
-    , Pawn Black ( 'c', 7 )
-    , Pawn Black ( 'd', 7 )
-    , Pawn Black ( 'e', 7 )
-    , Pawn Black ( 'f', 7 )
-    , Pawn Black ( 'g', 7 )
-    , Pawn Black ( 'h', 7 )
-    , Rook Black ( 'a', 8 )
-    , Knight Black ( 'b', 8 )
-    , Bishop Black ( 'c', 8 )
-    , Queen Black ( 'd', 8 )
-    , King Black ( 'e', 8 )
-    , Bishop Black ( 'f', 8 )
-    , Knight Black ( 'g', 8 )
-    , Rook Black ( 'h', 8 )
-    , Pawn White ( 'a', 2 )
-    , Pawn White ( 'b', 2 )
-    , Pawn White ( 'c', 2 )
-    , Pawn White ( 'd', 2 )
-    , Pawn White ( 'e', 2 )
-    , Pawn White ( 'f', 2 )
-    , Pawn White ( 'g', 2 )
-    , Pawn White ( 'h', 2 )
-    , Rook White ( 'a', 1 )
-    , Knight White ( 'b', 1 )
-    , Bishop White ( 'c', 1 )
-    , Queen White ( 'd', 1 )
-    , King White ( 'e', 1 )
-    , Bishop White ( 'f', 1 )
-    , Knight White ( 'g', 1 )
-    , Rook White ( 'h', 1 )
+    [ Pawn Black ( File.a, 7 )
+    , Pawn Black ( File.b, 7 )
+    , Pawn Black ( File.c, 7 )
+    , Pawn Black ( File.d, 7 )
+    , Pawn Black ( File.e, 7 )
+    , Pawn Black ( File.f, 7 )
+    , Pawn Black ( File.g, 7 )
+    , Pawn Black ( File.h, 7 )
+    , Rook Black ( File.a, 8 )
+    , Knight Black ( File.b, 8 )
+    , Bishop Black ( File.c, 8 )
+    , Queen Black ( File.d, 8 )
+    , King Black ( File.e, 8 )
+    , Bishop Black ( File.f, 8 )
+    , Knight Black ( File.g, 8 )
+    , Rook Black ( File.h, 8 )
+    , Pawn White ( File.a, 2 )
+    , Pawn White ( File.b, 2 )
+    , Pawn White ( File.c, 2 )
+    , Pawn White ( File.d, 2 )
+    , Pawn White ( File.e, 2 )
+    , Pawn White ( File.f, 2 )
+    , Pawn White ( File.g, 2 )
+    , Pawn White ( File.h, 2 )
+    , Rook White ( File.a, 1 )
+    , Knight White ( File.b, 1 )
+    , Bishop White ( File.c, 1 )
+    , Queen White ( File.d, 1 )
+    , King White ( File.e, 1 )
+    , Bishop White ( File.f, 1 )
+    , Knight White ( File.g, 1 )
+    , Rook White ( File.h, 1 )
     ]
 
 
@@ -69,7 +70,7 @@ view rotation selected pieces =
                     ++ "deg);"
             ]
             (cartesianProduct
-                [ 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h' ]
+                [ File.a, File.b, File.c, File.d, File.e, File.f, File.g, File.h ]
                 (List.range 1 8)
                 (Field.view (Maybe.map Piece.getField selected))
                 ++ List.map (Piece.view rotation) pieces

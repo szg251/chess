@@ -3,6 +3,7 @@ module Main exposing (main)
 import Board
 import Browser
 import Browser.Events exposing (onKeyDown)
+import File exposing (File)
 import Html exposing (Html, button, div, input, label, text)
 import Html.Attributes exposing (checked, for, id, style, type_)
 import Html.Events exposing (onClick)
@@ -13,7 +14,7 @@ import Piece exposing (Color(..), Piece(..))
 
 type alias Model =
     { selected : Maybe Piece
-    , inputBuffer : Maybe Char
+    , inputBuffer : Maybe File
     , pieces : List Piece
     , turn : Color
     , rotateOnTurn : Bool
@@ -33,39 +34,16 @@ init _ =
 
 
 type Msg
-    = InputFile Char
+    = InputFile File
     | InputRank Int
     | Cancel
     | RotateOnTurnClicked
     | Restart
 
 
-isValidFile : Char -> Bool
-isValidFile char =
-    let
-        code =
-            Char.toCode char
-    in
-    0x61 <= code && code <= 0x68
-
-
 isValidRank : Int -> Bool
 isValidRank int =
     1 <= int && int <= 8
-
-
-stringToFile : String -> Maybe Char
-stringToFile str =
-    String.uncons str
-        |> Maybe.map Tuple.first
-        |> Maybe.andThen
-            (\char ->
-                if isValidFile char then
-                    Just char
-
-                else
-                    Nothing
-            )
 
 
 stringToRank : String -> Maybe Int
@@ -201,10 +179,10 @@ view model =
                                     ( file, rank ) =
                                         Piece.getField selectedPiece
                                 in
-                                String.fromChar file ++ String.fromInt rank
+                                (File.toChar >> String.fromChar) file ++ String.fromInt rank
 
                     Just bufferedFile ->
-                        String.fromChar bufferedFile
+                        (File.toChar >> String.fromChar) bufferedFile
             ]
         ]
 
@@ -220,7 +198,11 @@ keyDecoder =
                 else
                     case
                         MaybeE.or
-                            (stringToFile key |> Maybe.map InputFile)
+                            (String.uncons key
+                                |> Maybe.map Tuple.first
+                                |> Maybe.andThen File.fromChar
+                                |> Maybe.map InputFile
+                            )
                             (stringToRank key |> Maybe.map InputRank)
                     of
                         Just msg ->

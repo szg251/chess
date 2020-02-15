@@ -1,6 +1,7 @@
 module Piece exposing (Color(..), Field, Piece(..), getColor, getField, move, view)
 
 import Field exposing (fileToX, rankToY)
+import File exposing (File)
 import Icons.Bishop
 import Icons.King
 import Icons.Knight
@@ -11,7 +12,7 @@ import Svg exposing (Svg)
 
 
 type alias Field =
-    ( Char, Int )
+    ( File, Int )
 
 
 type Piece
@@ -148,7 +149,7 @@ isLegalMove otherPieces ( nextFile, nextRank ) piece =
             getField piece
 
         fileDiff =
-            Field.fileToInt nextFile - Field.fileToInt prevFile
+            File.toInt nextFile - File.toInt prevFile
 
         rankDiff =
             nextRank - prevRank
@@ -209,10 +210,10 @@ isLegalMove otherPieces ( nextFile, nextRank ) piece =
                         []
 
                     else if fileDiff > 0 then
-                        List.range (Field.fileToInt prevFile + 1) (Field.fileToInt nextFile - 1)
+                        List.range (File.toInt prevFile + 1) (File.toInt nextFile - 1)
 
                     else if fileDiff < 0 then
-                        List.range (Field.fileToInt nextFile + 1) (Field.fileToInt prevFile - 1) |> List.reverse
+                        List.range (File.toInt nextFile + 1) (File.toInt prevFile - 1) |> List.reverse
 
                     else
                         []
@@ -235,10 +236,10 @@ isLegalMove otherPieces ( nextFile, nextRank ) piece =
                     List.map (\rank -> ( prevFile, rank )) rankSteps
 
                 ( _, [] ) ->
-                    List.map (\file -> ( Field.intToFile file, prevRank )) fileSteps
+                    List.map (\file -> ( File.fromInt file, prevRank )) fileSteps
 
                 _ ->
-                    List.map2 Tuple.pair (List.map Field.intToFile fileSteps) rankSteps
+                    List.map2 Tuple.pair (List.map File.fromInt fileSteps) rankSteps
 
         noBlockingPiece =
             List.all
