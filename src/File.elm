@@ -41,35 +41,35 @@ toChar (File file) =
     file
 
 
-fromInt : Int -> File
+fromInt : Int -> Maybe File
 fromInt file =
     case file of
         1 ->
-            File 'a'
+            Just (File 'a')
 
         2 ->
-            File 'b'
+            Just (File 'b')
 
         3 ->
-            File 'c'
+            Just (File 'c')
 
         4 ->
-            File 'd'
+            Just (File 'd')
 
         5 ->
-            File 'e'
+            Just (File 'e')
 
         6 ->
-            File 'f'
+            Just (File 'f')
 
         7 ->
-            File 'g'
+            Just (File 'g')
 
         8 ->
-            File 'h'
+            Just (File 'h')
 
         _ ->
-            File ' '
+            Nothing
 
 
 fromChar : Char -> Maybe File

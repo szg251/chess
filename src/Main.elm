@@ -10,6 +10,7 @@ import Html.Events exposing (onClick)
 import Json.Decode as D
 import Maybe.Extra as MaybeE
 import Piece exposing (Color(..), Piece(..))
+import Rank exposing (Rank)
 
 
 type alias Model =
@@ -35,28 +36,10 @@ init _ =
 
 type Msg
     = InputFile File
-    | InputRank Int
+    | InputRank Rank
     | Cancel
     | RotateOnTurnClicked
     | Restart
-
-
-isValidRank : Int -> Bool
-isValidRank int =
-    1 <= int && int <= 8
-
-
-stringToRank : String -> Maybe Int
-stringToRank str =
-    String.toInt str
-        |> Maybe.andThen
-            (\int ->
-                if isValidRank int then
-                    Just int
-
-                else
-                    Nothing
-            )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -179,7 +162,7 @@ view model =
                                     ( file, rank ) =
                                         Piece.getField selectedPiece
                                 in
-                                (File.toChar >> String.fromChar) file ++ String.fromInt rank
+                                (File.toChar >> String.fromChar) file ++ (Rank.toInt >> String.fromInt) rank
 
                     Just bufferedFile ->
                         (File.toChar >> String.fromChar) bufferedFile
@@ -203,7 +186,10 @@ keyDecoder =
                                 |> Maybe.andThen File.fromChar
                                 |> Maybe.map InputFile
                             )
-                            (stringToRank key |> Maybe.map InputRank)
+                            (String.toInt key
+                                |> Maybe.andThen Rank.fromInt
+                                |> Maybe.map InputRank
+                            )
                     of
                         Just msg ->
                             D.succeed msg

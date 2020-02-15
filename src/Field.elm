@@ -1,16 +1,13 @@
 module Field exposing (Field, fieldSize, fileToX, rankToY, view)
 
 import File exposing (File)
+import Rank exposing (Rank)
 import Svg exposing (Svg, rect)
 import Svg.Attributes exposing (fill, height, stroke, strokeWidth, width, x, y)
 
 
-type Rank
-    = Rank Int
-
-
 type alias Field =
-    ( File, Int )
+    ( File, Rank )
 
 
 fieldSize : Int
@@ -23,24 +20,24 @@ fileToX file =
     (File.toInt file - 1) * fieldSize + 1
 
 
-rankToY : Int -> Int
+rankToY : Rank -> Int
 rankToY rank =
-    (8 - rank) * fieldSize + 1
+    (8 - Rank.toInt rank) * fieldSize + 1
 
 
-getColor : Maybe Field -> File -> Int -> String
+getColor : Maybe Field -> File -> Rank -> String
 getColor selected file rank =
     if selected == Just ( file, rank ) then
         "#05a"
 
-    else if modBy 2 (File.toInt file + 7 - rank) == 0 then
+    else if modBy 2 (File.toInt file + 7 - Rank.toInt rank) == 0 then
         "#fff"
 
     else
         "#444"
 
 
-view : Maybe Field -> File -> Int -> Svg msg
+view : Maybe Field -> File -> Rank -> Svg msg
 view selected file rank =
     rect
         [ x <| String.fromInt (fileToX file)

@@ -8,11 +8,12 @@ import Icons.Knight
 import Icons.Pawn
 import Icons.Queen
 import Icons.Rook
+import Rank exposing (Rank)
 import Svg exposing (Svg)
 
 
 type alias Field =
-    ( File, Int )
+    ( File, Rank )
 
 
 type Piece
@@ -77,7 +78,7 @@ move otherPieces field piece =
         Just <|
             case piece of
                 Pawn color _ ->
-                    if Tuple.second field < 8 then
+                    if (Tuple.second >> Rank.toInt) field < 8 then
                         Pawn color field
 
                     else
@@ -152,7 +153,7 @@ isLegalMove otherPieces ( nextFile, nextRank ) piece =
             File.toInt nextFile - File.toInt prevFile
 
         rankDiff =
-            nextRank - prevRank
+            Rank.toInt nextRank - Rank.toInt prevRank
 
         legalMove =
             case piece of
@@ -179,7 +180,7 @@ isLegalMove otherPieces ( nextFile, nextRank ) piece =
                             List.any (\otherPiece -> getField otherPiece == ( nextFile, nextRank )) otherPieces
                     in
                     if not hasEnemyPiece then
-                        if prevRank == 2 then
+                        if Rank.toInt prevRank == 2 then
                             (fileDiff == 0) && (rankDiff == 1 || rankDiff == 2)
 
                         else
@@ -194,7 +195,7 @@ isLegalMove otherPieces ( nextFile, nextRank ) piece =
                             List.any (\otherPiece -> getField otherPiece == ( nextFile, nextRank )) otherPieces
                     in
                     if not hasEnemyPiece then
-                        if prevRank == 7 then
+                        if Rank.toInt prevRank == 7 then
                             (fileDiff == 0) && (rankDiff == -1 || rankDiff == -2)
 
                         else
@@ -223,28 +224,41 @@ isLegalMove otherPieces ( nextFile, nextRank ) piece =
                         []
 
                     else if rankDiff > 0 then
-                        List.range (prevRank + 1) (nextRank - 1)
+                        List.range (Rank.toInt prevRank + 1) (Rank.toInt nextRank - 1)
 
                     else if rankDiff < 0 then
-                        List.range (nextRank + 1) (prevRank - 1) |> List.reverse
+                        List.range (Rank.toInt nextRank + 1) (Rank.toInt prevRank - 1) |> List.reverse
 
                     else
                         []
+
+                tupleJoin ( maybeA, maybeB ) =
+                    Maybe.map2 Tuple.pair maybeA maybeB
             in
             case ( fileSteps, rankSteps ) of
                 ( [], _ ) ->
-                    List.map (\rank -> ( prevFile, rank )) rankSteps
+                    List.map (\rank -> ( Just prevFile, Rank.fromInt rank )) rankSteps
+                        |> List.map tupleJoin
 
                 ( _, [] ) ->
-                    List.map (\file -> ( File.fromInt file, prevRank )) fileSteps
+                    List.map (\file -> ( File.fromInt file, Just prevRank )) fileSteps
+                        |> List.map tupleJoin
 
                 _ ->
-                    List.map2 Tuple.pair (List.map File.fromInt fileSteps) rankSteps
+                    List.map2 Tuple.pair
+                        (List.map File.fromInt fileSteps)
+                        (List.map Rank.fromInt rankSteps)
+                        |> List.map tupleJoin
 
         noBlockingPiece =
             List.all
-                (\step ->
-                    List.all (\otherPiece -> getField otherPiece /= step) otherPieces
+                (\maybeStep ->
+                    case maybeStep of
+                        Nothing ->
+                            False
+
+                        Just step ->
+                            List.all (\otherPiece -> getField otherPiece /= step) otherPieces
                 )
                 steps
 
