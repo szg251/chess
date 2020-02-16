@@ -3,13 +3,14 @@ module Main exposing (main)
 import Board
 import Browser
 import Browser.Events exposing (onKeyDown)
-import Field exposing (Field)
 import File exposing (File)
 import Html exposing (Html, button, div, input, label, text)
-import Html.Attributes exposing (checked, for, id, style, type_)
-import Html.Events exposing (onClick)
+import Html.Attributes exposing (checked, for, id, style, type_, value)
+import Html.Events exposing (onClick, onInput)
+import InputState exposing (InputState(..))
 import Json.Decode as D
 import Maybe.Extra as MaybeE
+import Parser
 import Piece exposing (Color(..), Piece, PieceType(..))
 import Rank exposing (Rank)
 
@@ -20,6 +21,8 @@ type alias Model =
     , pieces : List Piece
     , turn : Color
     , rotateOnTurn : Bool
+    , input : String
+    , inputState : InputState
     }
 
 
@@ -30,6 +33,8 @@ init _ =
       , pieces = Board.initPieces
       , turn = White
       , rotateOnTurn = True
+      , input = ""
+      , inputState = NotSelected
       }
     , Cmd.none
     )
@@ -38,6 +43,7 @@ init _ =
 type Msg
     = InputFile File
     | InputRank Rank
+    | Input String
     | Cancel
     | RotateOnTurnClicked
     | Restart
@@ -121,6 +127,20 @@ update msg model =
               , pieces = Board.initPieces
               , turn = White
               , rotateOnTurn = True
+              , input = ""
+              , inputState = NotSelected
+              }
+            , Cmd.none
+            )
+
+        Input str ->
+            ( { model
+                | input = str
+                , inputState =
+                    str
+                        |> Parser.run InputState.parser
+                        |> Debug.log "input"
+                        |> Result.withDefault NotSelected
               }
             , Cmd.none
             )
@@ -150,6 +170,7 @@ view model =
             model.selected
             (MaybeE.toList model.selected ++ model.pieces)
         , div [] [ text "The pieces are controlled by keyboard commands like e2e4" ]
+        , input [ onInput Input, value model.input ] []
         , div [ style "fontWeight" "bold" ]
             [ text <|
                 case model.inputBuffer of
@@ -169,17 +190,6 @@ view model =
                         (File.toChar >> String.fromChar) bufferedFile
             ]
         ]
-
-
-type InputState
-    = NotSelected
-    | Selected Piece (Maybe SelectionHelper)
-    | Moved Piece (Maybe SelectionHelper) Field
-
-
-type SelectionHelper
-    = WithFile File
-    | WithRank Rank
 
 
 keyDecoder : D.Decoder Msg

@@ -1,9 +1,17 @@
-module Field exposing (Field, fieldSize, fileToX, rankToY, view)
+module Field exposing (Field, fieldSize, fileToX, parser, rankToY, view)
 
 import File exposing (File)
+import Parser exposing ((|=), Parser, succeed)
 import Rank exposing (Rank)
 import Svg exposing (Svg, rect)
 import Svg.Attributes exposing (fill, height, stroke, strokeWidth, width, x, y)
+
+
+parser : Parser Field
+parser =
+    succeed Tuple.pair
+        |= File.parser
+        |= Rank.parser
 
 
 type alias Field =

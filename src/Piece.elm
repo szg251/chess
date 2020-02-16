@@ -1,4 +1,4 @@
-module Piece exposing (Color(..), Field, Piece, PieceType(..), move, view)
+module Piece exposing (Color(..), Field, Piece, PieceType(..), move, parser, view)
 
 import Field exposing (fileToX, rankToY)
 import File exposing (File)
@@ -8,8 +8,21 @@ import Icons.Knight
 import Icons.Pawn
 import Icons.Queen
 import Icons.Rook
+import Parser exposing ((|.), Parser, oneOf, succeed, symbol)
 import Rank exposing (Rank)
 import Svg exposing (Svg)
+
+
+parser : Parser PieceType
+parser =
+    oneOf
+        [ succeed Rook |. symbol "R"
+        , succeed Knight |. symbol "N"
+        , succeed Bishop |. symbol "B"
+        , succeed Queen |. symbol "Q"
+        , succeed King |. symbol "K"
+        , succeed Pawn |. symbol ""
+        ]
 
 
 type alias Field =

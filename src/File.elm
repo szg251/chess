@@ -1,8 +1,24 @@
-module File exposing (File, a, b, c, d, e, f, fromChar, fromInt, g, h, toChar, toInt)
+module File exposing (File, a, b, c, d, e, f, fromChar, fromInt, g, h, parser, toChar, toInt)
+
+import Parser exposing ((|.), Parser, oneOf, succeed, symbol)
 
 
 type File
     = File Char
+
+
+parser : Parser File
+parser =
+    oneOf
+        [ succeed (File 'a') |. symbol "a"
+        , succeed (File 'b') |. symbol "b"
+        , succeed (File 'c') |. symbol "c"
+        , succeed (File 'd') |. symbol "d"
+        , succeed (File 'e') |. symbol "e"
+        , succeed (File 'f') |. symbol "f"
+        , succeed (File 'g') |. symbol "g"
+        , succeed (File 'h') |. symbol "h"
+        ]
 
 
 toInt : File -> Int

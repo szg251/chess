@@ -1,8 +1,24 @@
-module Rank exposing (Rank, fromInt, r1, r2, r3, r4, r5, r6, r7, r8, toInt)
+module Rank exposing (Rank, fromInt, parser, r1, r2, r3, r4, r5, r6, r7, r8, toInt)
+
+import Parser exposing ((|.), Parser, oneOf, succeed, symbol)
 
 
 type Rank
     = Rank Int
+
+
+parser : Parser Rank
+parser =
+    oneOf
+        [ succeed (Rank 1) |. symbol "1"
+        , succeed (Rank 2) |. symbol "2"
+        , succeed (Rank 3) |. symbol "3"
+        , succeed (Rank 4) |. symbol "4"
+        , succeed (Rank 5) |. symbol "5"
+        , succeed (Rank 6) |. symbol "6"
+        , succeed (Rank 7) |. symbol "7"
+        , succeed (Rank 8) |. symbol "8"
+        ]
 
 
 fromInt : Int -> Maybe Rank
