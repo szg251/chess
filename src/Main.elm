@@ -2,17 +2,16 @@ module Main exposing (main)
 
 import Board
 import Browser
-import Browser.Events exposing (onKeyDown)
 import File exposing (File)
+import GameLogic
 import Html exposing (Html, button, div, input, label, text)
 import Html.Attributes exposing (checked, for, id, style, type_, value)
 import Html.Events exposing (onClick, onInput)
 import InputState exposing (InputState(..))
-import Json.Decode as D
 import Maybe.Extra as MaybeE
 import Parser
 import Piece exposing (Color(..), Piece, PieceType(..))
-import Rank exposing (Rank)
+import Rank
 
 
 type alias Model =
@@ -41,10 +40,7 @@ init _ =
 
 
 type Msg
-    = InputFile File
-    | InputRank Rank
-    | Input String
-    | Cancel
+    = Input String
     | RotateOnTurnClicked
     | Restart
 
@@ -52,72 +48,6 @@ type Msg
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        Cancel ->
-            ( { model
-                | inputBuffer = Nothing
-                , selected = Nothing
-                , pieces = MaybeE.toList model.selected ++ model.pieces
-              }
-            , Cmd.none
-            )
-
-        InputFile file ->
-            ( { model | inputBuffer = Just file }, Cmd.none )
-
-        InputRank rank ->
-            case model.inputBuffer of
-                Nothing ->
-                    ( model, Cmd.none )
-
-                Just bufferedFile ->
-                    let
-                        newSelection =
-                            ( bufferedFile, rank )
-                    in
-                    case model.selected of
-                        Nothing ->
-                            let
-                                nextSelected =
-                                    model.pieces
-                                        |> List.filter
-                                            (\piece ->
-                                                (piece.field == newSelection)
-                                                    && (piece.color == model.turn)
-                                            )
-                                        |> List.head
-                            in
-                            ( { model
-                                | selected = nextSelected
-                                , pieces =
-                                    model.pieces
-                                        |> List.filter (\piece -> Just piece /= nextSelected)
-                                , inputBuffer = Nothing
-                              }
-                            , Cmd.none
-                            )
-
-                        Just currentSelection ->
-                            case Piece.move model.pieces newSelection currentSelection of
-                                Nothing ->
-                                    ( model, Cmd.none )
-
-                                Just movedPiece ->
-                                    ( { model
-                                        | pieces =
-                                            movedPiece
-                                                :: List.filter (\piece -> piece.field /= movedPiece.field) model.pieces
-                                        , selected = Nothing
-                                        , inputBuffer = Nothing
-                                        , turn =
-                                            if model.turn == White then
-                                                Black
-
-                                            else
-                                                White
-                                      }
-                                    , Cmd.none
-                                    )
-
         RotateOnTurnClicked ->
             ( { model | rotateOnTurn = not model.rotateOnTurn }, Cmd.none )
 
@@ -134,16 +64,29 @@ update msg model =
             )
 
         Input str ->
-            ( { model
-                | input = str
-                , inputState =
+            let
+                inputState =
                     str
                         |> Parser.run InputState.parser
-                        |> Debug.log "input"
                         |> Result.withDefault NotSelected
-              }
-            , Cmd.none
-            )
+            in
+            case inputState of
+                Moved _ _ _ ->
+                    ( { model
+                        | input = ""
+                        , inputState = NotSelected
+                        , pieces = GameLogic.movePiece inputState model.turn model.pieces
+                      }
+                    , Cmd.none
+                    )
+
+                _ ->
+                    ( { model
+                        | input = str
+                        , inputState = inputState
+                      }
+                    , Cmd.none
+                    )
 
 
 view : Model -> Html Msg
@@ -167,7 +110,7 @@ view model =
              else
                 0
             )
-            model.selected
+            (InputState.getSelectedPieces model.inputState model.turn model.pieces)
             (MaybeE.toList model.selected ++ model.pieces)
         , div [] [ text "The pieces are controlled by keyboard commands like e2e4" ]
         , input [ onInput Input, value model.input ] []
@@ -192,38 +135,9 @@ view model =
         ]
 
 
-keyDecoder : D.Decoder Msg
-keyDecoder =
-    D.field "key" D.string
-        |> D.andThen
-            (\key ->
-                if key == "Escape" then
-                    D.succeed Cancel
-
-                else
-                    case
-                        MaybeE.or
-                            (String.uncons key
-                                |> Maybe.map Tuple.first
-                                |> Maybe.andThen File.fromChar
-                                |> Maybe.map InputFile
-                            )
-                            (String.toInt key
-                                |> Maybe.andThen Rank.fromInt
-                                |> Maybe.map InputRank
-                            )
-                    of
-                        Just msg ->
-                            D.succeed msg
-
-                        Nothing ->
-                            D.fail ("invalid input: " ++ key)
-            )
-
-
 subscriptions : Model -> Sub Msg
 subscriptions _ =
-    onKeyDown keyDecoder
+    Sub.none
 
 
 main : Program () Model Msg

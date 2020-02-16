@@ -33,9 +33,9 @@ rankToY rank =
     (8 - Rank.toInt rank) * fieldSize + 1
 
 
-getColor : Maybe Field -> File -> Rank -> String
-getColor selected file rank =
-    if selected == Just ( file, rank ) then
+getColor : List Field -> File -> Rank -> String
+getColor selectedFields file rank =
+    if List.any ((==) ( file, rank )) selectedFields then
         "#05a"
 
     else if modBy 2 (File.toInt file + 7 - Rank.toInt rank) == 0 then
@@ -45,7 +45,7 @@ getColor selected file rank =
         "#444"
 
 
-view : Maybe Field -> File -> Rank -> Svg msg
+view : List Field -> File -> Rank -> Svg msg
 view selected file rank =
     rect
         [ x <| String.fromInt (fileToX file)
