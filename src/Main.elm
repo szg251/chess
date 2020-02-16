@@ -2,6 +2,7 @@ module Main exposing (main)
 
 import Board
 import Browser
+import Browser.Dom as Dom
 import File exposing (File)
 import GameLogic
 import Html exposing (Html, button, div, input, label, text)
@@ -12,53 +13,68 @@ import Maybe.Extra as MaybeE
 import Parser
 import Piece exposing (Color(..), Piece, PieceType(..))
 import Rank
+import Task
 
 
 type alias Model =
     { selected : Maybe Piece
-    , inputBuffer : Maybe File
     , pieces : List Piece
     , turn : Color
     , rotateOnTurn : Bool
     , input : String
     , inputState : InputState
+    , error : Maybe String
     }
 
 
 init : () -> ( Model, Cmd Msg )
 init _ =
     ( { selected = Nothing
-      , inputBuffer = Nothing
       , pieces = Board.initPieces
       , turn = White
       , rotateOnTurn = True
       , input = ""
       , inputState = NotSelected
+      , error = Nothing
       }
-    , Cmd.none
+    , Task.attempt (\_ -> NoOp) (Dom.focus "input-bar")
     )
 
 
 type Msg
-    = Input String
+    = NoOp
+    | Input String
     | RotateOnTurnClicked
     | Restart
+
+
+changeTurn : Color -> Color
+changeTurn color =
+    case color of
+        White ->
+            Black
+
+        Black ->
+            White
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        NoOp ->
+            ( model, Cmd.none )
+
         RotateOnTurnClicked ->
             ( { model | rotateOnTurn = not model.rotateOnTurn }, Cmd.none )
 
         Restart ->
             ( { selected = Nothing
-              , inputBuffer = Nothing
               , pieces = Board.initPieces
               , turn = White
               , rotateOnTurn = True
               , input = ""
               , inputState = NotSelected
+              , error = Nothing
               }
             , Cmd.none
             )
@@ -72,13 +88,26 @@ update msg model =
             in
             case inputState of
                 Moved _ _ _ ->
-                    ( { model
-                        | input = ""
-                        , inputState = NotSelected
-                        , pieces = GameLogic.movePiece inputState model.turn model.pieces
-                      }
-                    , Cmd.none
-                    )
+                    case GameLogic.movePiece inputState model.turn model.pieces of
+                        Ok nextPieces ->
+                            ( { model
+                                | input = ""
+                                , inputState = NotSelected
+                                , pieces = nextPieces
+                                , turn = changeTurn model.turn
+                                , error = Nothing
+                              }
+                            , Cmd.none
+                            )
+
+                        Err err ->
+                            ( { model
+                                | error = Just err
+                                , input = ""
+                                , inputState = NotSelected
+                              }
+                            , Cmd.none
+                            )
 
                 _ ->
                     ( { model
@@ -112,26 +141,9 @@ view model =
             )
             (InputState.getSelectedPieces model.inputState model.turn model.pieces)
             (MaybeE.toList model.selected ++ model.pieces)
-        , div [] [ text "The pieces are controlled by keyboard commands like e2e4" ]
-        , input [ onInput Input, value model.input ] []
-        , div [ style "fontWeight" "bold" ]
-            [ text <|
-                case model.inputBuffer of
-                    Nothing ->
-                        case model.selected of
-                            Nothing ->
-                                ""
-
-                            Just selectedPiece ->
-                                let
-                                    ( file, rank ) =
-                                        selectedPiece.field
-                                in
-                                (File.toChar >> String.fromChar) file ++ (Rank.toInt >> String.fromInt) rank
-
-                    Just bufferedFile ->
-                        (File.toChar >> String.fromChar) bufferedFile
-            ]
+        , div [] [ text "The pieces are controlled by algebraic chess notation like Nc3" ]
+        , input [ id "input-bar", onInput Input, value model.input ] []
+        , div [ style "fontWeight" "bold" ] [ text <| Maybe.withDefault "" model.error ]
         ]
 
 

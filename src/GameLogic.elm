@@ -3,34 +3,37 @@ module GameLogic exposing (..)
 import Field exposing (Field)
 import File
 import InputState exposing (InputState(..), SelectionHelper(..))
-import Maybe.Extra as MaybeE
 import Piece exposing (Color(..), Piece, PieceType(..))
 import Rank
+import Result.Extra as ResultE
 
 
-move : List Piece -> Field -> Piece -> Maybe (List Piece)
+move : List Piece -> Field -> Piece -> Result String (List Piece)
 move pieces field selected =
     let
         otherPieces =
             List.filter (\piece -> piece /= selected) pieces
+
+        remainedPieces =
+            List.filter (\piece -> piece.field /= field) otherPieces
     in
     if isLegalMove otherPieces field selected then
         case selected.name of
             Pawn ->
                 if (Tuple.second >> Rank.toInt) field < 8 then
-                    Just <| { selected | field = field } :: otherPieces
+                    Ok <| { selected | field = field } :: remainedPieces
 
                 else
-                    Just <| { selected | name = Queen, field = field } :: otherPieces
+                    Ok <| { selected | name = Queen, field = field } :: remainedPieces
 
             _ ->
-                Just <| { selected | field = field } :: otherPieces
+                Ok <| { selected | field = field } :: remainedPieces
 
     else
-        Nothing
+        Err "This move is not possible."
 
 
-movePiece : InputState -> Color -> List Piece -> List Piece
+movePiece : InputState -> Color -> List Piece -> Result String (List Piece)
 movePiece inputState turn pieces =
     case inputState of
         Moved _ _ field ->
@@ -38,17 +41,20 @@ movePiece inputState turn pieces =
                 attempts =
                     InputState.getSelectedPieces inputState turn pieces
                         |> List.map (move pieces field)
-                        |> MaybeE.values
+                        |> ResultE.partition
             in
             case attempts of
-                [ onePossibleMove ] ->
-                    onePossibleMove
+                ( [ onePossibleMove ], _ ) ->
+                    Ok onePossibleMove
+
+                ( [], err :: _ ) ->
+                    Err err
 
                 _ ->
-                    pieces
+                    Err "Multiple possible moves. Try to specify which file or rank your piece is on. Ex. Rd5 -> Rad5"
 
         _ ->
-            pieces
+            Ok pieces
 
 
 isLegalMove : List Piece -> Field -> Piece -> Bool

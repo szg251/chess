@@ -2,7 +2,7 @@ module InputState exposing (..)
 
 import Field exposing (Field)
 import File exposing (File)
-import Parser exposing ((|.), (|=), Parser, backtrackable, end, oneOf, succeed)
+import Parser exposing ((|.), (|=), Parser, backtrackable, end, oneOf, succeed, symbol)
 import Piece exposing (Color(..), Piece, PieceType(..))
 import Rank exposing (Rank)
 
@@ -35,6 +35,7 @@ parser =
             succeed Moved
                 |= Piece.parser
                 |= succeed Nothing
+                |. oneOf [ succeed () |. symbol "x", succeed () ]
                 |= Field.parser
                 |. end
         , backtrackable <|
@@ -42,6 +43,7 @@ parser =
                 |= Piece.parser
                 |= Parser.map Just selectionHelperParser
                 |= Field.parser
+                |. oneOf [ succeed () |. symbol "x", succeed () ]
                 |. end
         , backtrackable <|
             succeed Selected
