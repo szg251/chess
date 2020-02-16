@@ -3,13 +3,14 @@ module Main exposing (main)
 import Board
 import Browser
 import Browser.Events exposing (onKeyDown)
+import Field exposing (Field)
 import File exposing (File)
 import Html exposing (Html, button, div, input, label, text)
 import Html.Attributes exposing (checked, for, id, style, type_)
 import Html.Events exposing (onClick)
 import Json.Decode as D
 import Maybe.Extra as MaybeE
-import Piece exposing (Color(..), Piece(..))
+import Piece exposing (Color(..), Piece, PieceType(..))
 import Rank exposing (Rank)
 
 
@@ -74,8 +75,8 @@ update msg model =
                                     model.pieces
                                         |> List.filter
                                             (\piece ->
-                                                (Piece.getField piece == newSelection)
-                                                    && (Piece.getColor piece == model.turn)
+                                                (piece.field == newSelection)
+                                                    && (piece.color == model.turn)
                                             )
                                         |> List.head
                             in
@@ -98,7 +99,7 @@ update msg model =
                                     ( { model
                                         | pieces =
                                             movedPiece
-                                                :: List.filter (\piece -> Piece.getField piece /= Piece.getField movedPiece) model.pieces
+                                                :: List.filter (\piece -> piece.field /= movedPiece.field) model.pieces
                                         , selected = Nothing
                                         , inputBuffer = Nothing
                                         , turn =
@@ -160,7 +161,7 @@ view model =
                             Just selectedPiece ->
                                 let
                                     ( file, rank ) =
-                                        Piece.getField selectedPiece
+                                        selectedPiece.field
                                 in
                                 (File.toChar >> String.fromChar) file ++ (Rank.toInt >> String.fromInt) rank
 
@@ -168,6 +169,17 @@ view model =
                         (File.toChar >> String.fromChar) bufferedFile
             ]
         ]
+
+
+type InputState
+    = NotSelected
+    | Selected Piece (Maybe SelectionHelper)
+    | Moved Piece (Maybe SelectionHelper) Field
+
+
+type SelectionHelper
+    = WithFile File
+    | WithRank Rank
 
 
 keyDecoder : D.Decoder Msg

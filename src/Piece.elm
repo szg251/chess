@@ -1,4 +1,4 @@
-module Piece exposing (Color(..), Field, Piece(..), getColor, getField, move, view)
+module Piece exposing (Color(..), Field, Piece, PieceType(..), move, view)
 
 import Field exposing (fileToX, rankToY)
 import File exposing (File)
@@ -16,23 +16,20 @@ type alias Field =
     ( File, Rank )
 
 
-type Piece
-    = Pawn Color Field
-    | Rook Color Field
-    | Knight Color Field
-    | Bishop Color Field
-    | Queen Color Field
-    | King Color Field
+type PieceType
+    = Pawn
+    | Rook
+    | Knight
+    | Bishop
+    | Queen
+    | King
 
 
-isKnight : Piece -> Bool
-isKnight piece =
-    case piece of
-        Knight _ _ ->
-            True
-
-        _ ->
-            False
+type alias Piece =
+    { name : PieceType
+    , color : Color
+    , field : Field
+    }
 
 
 type Color
@@ -40,64 +37,20 @@ type Color
     | Black
 
 
-getColorAndField : Piece -> ( Color, Field )
-getColorAndField piece =
-    case piece of
-        Pawn color field ->
-            ( color, field )
-
-        Rook color field ->
-            ( color, field )
-
-        Knight color field ->
-            ( color, field )
-
-        Bishop color field ->
-            ( color, field )
-
-        Queen color field ->
-            ( color, field )
-
-        King color field ->
-            ( color, field )
-
-
-getColor : Piece -> Color
-getColor =
-    getColorAndField >> Tuple.first
-
-
-getField : Piece -> Field
-getField =
-    getColorAndField >> Tuple.second
-
-
 move : List Piece -> Field -> Piece -> Maybe Piece
 move otherPieces field piece =
     if isLegalMove otherPieces field piece then
         Just <|
-            case piece of
-                Pawn color _ ->
+            case piece.name of
+                Pawn ->
                     if (Tuple.second >> Rank.toInt) field < 8 then
-                        Pawn color field
+                        { piece | field = field }
 
                     else
-                        Queen color field
+                        { piece | name = Queen, field = field }
 
-                Rook color _ ->
-                    Rook color field
-
-                Knight color _ ->
-                    Knight color field
-
-                Bishop color _ ->
-                    Bishop color field
-
-                Queen color _ ->
-                    Queen color field
-
-                King color _ ->
-                    King color field
+                _ ->
+                    { piece | field = field }
 
     else
         Nothing
@@ -105,41 +58,45 @@ move otherPieces field piece =
 
 view : Int -> Piece -> Svg msg
 view rotate piece =
-    case piece of
-        Pawn White ( file, rank ) ->
+    let
+        ( file, rank ) =
+            piece.field
+    in
+    case ( piece.name, piece.color ) of
+        ( Pawn, White ) ->
             Icons.Pawn.white rotate (fileToX file) (rankToY rank)
 
-        Pawn Black ( file, rank ) ->
+        ( Pawn, Black ) ->
             Icons.Pawn.black rotate (fileToX file) (rankToY rank)
 
-        King White ( file, rank ) ->
+        ( King, White ) ->
             Icons.King.white rotate (fileToX file) (rankToY rank)
 
-        King Black ( file, rank ) ->
+        ( King, Black ) ->
             Icons.King.black rotate (fileToX file) (rankToY rank)
 
-        Queen White ( file, rank ) ->
+        ( Queen, White ) ->
             Icons.Queen.white rotate (fileToX file) (rankToY rank)
 
-        Queen Black ( file, rank ) ->
+        ( Queen, Black ) ->
             Icons.Queen.black rotate (fileToX file) (rankToY rank)
 
-        Rook White ( file, rank ) ->
+        ( Rook, White ) ->
             Icons.Rook.white rotate (fileToX file) (rankToY rank)
 
-        Rook Black ( file, rank ) ->
+        ( Rook, Black ) ->
             Icons.Rook.black rotate (fileToX file) (rankToY rank)
 
-        Knight White ( file, rank ) ->
+        ( Knight, White ) ->
             Icons.Knight.white rotate (fileToX file) (rankToY rank)
 
-        Knight Black ( file, rank ) ->
+        ( Knight, Black ) ->
             Icons.Knight.black rotate (fileToX file) (rankToY rank)
 
-        Bishop White ( file, rank ) ->
+        ( Bishop, White ) ->
             Icons.Bishop.white rotate (fileToX file) (rankToY rank)
 
-        Bishop Black ( file, rank ) ->
+        ( Bishop, Black ) ->
             Icons.Bishop.black rotate (fileToX file) (rankToY rank)
 
 
@@ -147,7 +104,7 @@ isLegalMove : List Piece -> Field -> Piece -> Bool
 isLegalMove otherPieces ( nextFile, nextRank ) piece =
     let
         ( prevFile, prevRank ) =
-            getField piece
+            piece.field
 
         fileDiff =
             File.toInt nextFile - File.toInt prevFile
@@ -156,58 +113,60 @@ isLegalMove otherPieces ( nextFile, nextRank ) piece =
             Rank.toInt nextRank - Rank.toInt prevRank
 
         legalMove =
-            case piece of
-                Rook _ _ ->
+            case piece.name of
+                Rook ->
                     fileDiff == 0 && abs rankDiff > 0 || rankDiff == 0 && abs fileDiff > 0
 
-                Bishop _ _ ->
+                Bishop ->
                     abs fileDiff == abs rankDiff
 
-                Knight _ _ ->
+                Knight ->
                     abs fileDiff == 2 && abs rankDiff == 1 || abs fileDiff == 1 && abs rankDiff == 2
 
-                Queen _ _ ->
+                Queen ->
                     fileDiff == 0 && abs rankDiff > 0 || rankDiff == 0 && abs fileDiff > 0 || abs fileDiff == abs rankDiff
 
-                King _ _ ->
+                King ->
                     (abs fileDiff == 1 && abs rankDiff == 1)
                         || (abs fileDiff == 0 && abs rankDiff == 1)
                         || (abs fileDiff == 1 && abs rankDiff == 0)
 
-                Pawn White _ ->
-                    let
-                        hasEnemyPiece =
-                            List.any (\otherPiece -> getField otherPiece == ( nextFile, nextRank )) otherPieces
-                    in
-                    if not hasEnemyPiece then
-                        if Rank.toInt prevRank == 2 then
-                            (fileDiff == 0) && (rankDiff == 1 || rankDiff == 2)
+                Pawn ->
+                    case piece.color of
+                        White ->
+                            let
+                                hasEnemyPiece =
+                                    List.any (\otherPiece -> otherPiece.field == ( nextFile, nextRank )) otherPieces
+                            in
+                            if not hasEnemyPiece then
+                                if Rank.toInt prevRank == 2 then
+                                    (fileDiff == 0) && (rankDiff == 1 || rankDiff == 2)
 
-                        else
-                            (fileDiff == 0) && (rankDiff == 1)
+                                else
+                                    (fileDiff == 0) && (rankDiff == 1)
 
-                    else
-                        (abs fileDiff == 1) && (rankDiff == 1)
+                            else
+                                (abs fileDiff == 1) && (rankDiff == 1)
 
-                Pawn Black _ ->
-                    let
-                        hasEnemyPiece =
-                            List.any (\otherPiece -> getField otherPiece == ( nextFile, nextRank )) otherPieces
-                    in
-                    if not hasEnemyPiece then
-                        if Rank.toInt prevRank == 7 then
-                            (fileDiff == 0) && (rankDiff == -1 || rankDiff == -2)
+                        Black ->
+                            let
+                                hasEnemyPiece =
+                                    List.any (\otherPiece -> otherPiece.field == ( nextFile, nextRank )) otherPieces
+                            in
+                            if not hasEnemyPiece then
+                                if Rank.toInt prevRank == 7 then
+                                    (fileDiff == 0) && (rankDiff == -1 || rankDiff == -2)
 
-                        else
-                            (fileDiff == 0) && (rankDiff == -1)
+                                else
+                                    (fileDiff == 0) && (rankDiff == -1)
 
-                    else
-                        (abs fileDiff == 1) && (rankDiff == -1)
+                            else
+                                (abs fileDiff == 1) && (rankDiff == -1)
 
         steps =
             let
                 fileSteps =
-                    if isKnight piece then
+                    if piece.name == Knight then
                         []
 
                     else if fileDiff > 0 then
@@ -220,7 +179,7 @@ isLegalMove otherPieces ( nextFile, nextRank ) piece =
                         []
 
                 rankSteps =
-                    if isKnight piece then
+                    if piece.name == Knight then
                         []
 
                     else if rankDiff > 0 then
@@ -258,7 +217,7 @@ isLegalMove otherPieces ( nextFile, nextRank ) piece =
                             False
 
                         Just step ->
-                            List.all (\otherPiece -> getField otherPiece /= step) otherPieces
+                            List.all (\otherPiece -> otherPiece.field /= step) otherPieces
                 )
                 steps
 
@@ -266,8 +225,8 @@ isLegalMove otherPieces ( nextFile, nextRank ) piece =
             not <|
                 List.any
                     (\otherPiece ->
-                        (getColor piece == getColor otherPiece)
-                            && (( nextFile, nextRank ) == getField otherPiece)
+                        (piece.color == otherPiece.color)
+                            && (( nextFile, nextRank ) == otherPiece.field)
                     )
                     otherPieces
     in
