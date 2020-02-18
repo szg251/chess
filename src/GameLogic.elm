@@ -12,10 +12,8 @@ import Result.Extra as ResultE
 type alias GameState =
     { pieces : List Piece
     , turn : Color
-    , canCastle :
-        { black : CanCastle
-        , white : CanCastle
-        }
+    , enPassantRight : EnPassantRight
+    , castlingRight : CastlingRight
     }
 
 
@@ -23,7 +21,11 @@ init : GameState
 init =
     { pieces = Board.initPieces
     , turn = White
-    , canCastle =
+    , enPassantRight =
+        { black = Nothing
+        , white = Nothing
+        }
+    , castlingRight =
         { black =
             { kingSide = True
             , queenSide = True
@@ -36,9 +38,21 @@ init =
     }
 
 
-type alias CanCastle =
-    { kingSide : Bool
-    , queenSide : Bool
+type alias EnPassantRight =
+    { black : Maybe ( Field, Field )
+    , white : Maybe ( Field, Field )
+    }
+
+
+type alias CastlingRight =
+    { black :
+        { kingSide : Bool
+        , queenSide : Bool
+        }
+    , white :
+        { kingSide : Bool
+        , queenSide : Bool
+        }
     }
 
 
@@ -53,38 +67,63 @@ nextTurn turn =
 
 
 move : Field -> GameState -> Piece -> Result String ( Piece, Piece, GameState )
-move field gameState selected =
+move targetField gameState selected =
     let
         otherPieces =
             List.filter (\piece -> piece /= selected) gameState.pieces
 
+        simpleFilter otherPiece =
+            otherPiece.field
+                /= targetField
+
+        enPassantFilter otherPiece =
+            let
+                enPassantRight =
+                    case gameState.turn of
+                        White ->
+                            gameState.enPassantRight.white
+
+                        Black ->
+                            gameState.enPassantRight.black
+            in
+            case enPassantRight of
+                Nothing ->
+                    True
+
+                Just ( enPassantTarget, enPassantActual ) ->
+                    not (enPassantTarget == targetField && enPassantActual == otherPiece.field)
+
         remainedPieces =
-            List.filter (\piece -> piece.field /= field) otherPieces
+            if selected.name == Pawn then
+                List.filter (\x -> simpleFilter x && enPassantFilter x) otherPieces
+
+            else
+                List.filter simpleFilter otherPieces
     in
-    if isLegalMove otherPieces field selected then
+    if isLegalMove otherPieces gameState.enPassantRight targetField selected then
         let
             target =
                 case selected.name of
                     Pawn ->
-                        if (Tuple.second >> Rank.toInt) field < 8 then
-                            { selected | field = field }
+                        if (Tuple.second >> Rank.toInt) targetField < 8 then
+                            { selected | field = targetField }
 
                         else
-                            { selected | name = Queen, field = field }
+                            { selected | name = Queen, field = targetField }
 
                     _ ->
-                        { selected | field = field }
+                        { selected | field = targetField }
 
-            nextCanCastle =
+            nextCastlingRight =
                 let
-                    canCastle =
-                        gameState.canCastle
+                    castlingRight =
+                        gameState.castlingRight
 
                     updateWhite update =
-                        { canCastle | white = update canCastle.white }
+                        { castlingRight | white = update castlingRight.white }
 
                     updateBlack update =
-                        { canCastle | black = update canCastle.black }
+                        { castlingRight | black = update castlingRight.black }
                 in
                 case ( selected.name, gameState.turn ) of
                     ( King, White ) ->
@@ -101,7 +140,7 @@ move field gameState selected =
                             updateWhite (\c -> { c | kingSide = False })
 
                         else
-                            gameState.canCastle
+                            gameState.castlingRight
 
                     ( Rook, Black ) ->
                         if selected.field == ( File.a, Rank.r8 ) then
@@ -111,17 +150,74 @@ move field gameState selected =
                             updateWhite (\c -> { c | kingSide = False })
 
                         else
-                            gameState.canCastle
+                            gameState.castlingRight
 
                     _ ->
-                        gameState.canCastle
+                        gameState.castlingRight
+
+            nextEnPassantRight =
+                let
+                    enPassantRight =
+                        gameState.enPassantRight
+
+                    rankDiff fieldA fieldB =
+                        abs
+                            ((fieldA |> Tuple.second |> Rank.toInt)
+                                - (fieldB |> Tuple.second |> Rank.toInt)
+                            )
+                in
+                case gameState.turn of
+                    White ->
+                        if
+                            (selected.name == Pawn)
+                                && (rankDiff selected.field targetField == 2)
+                        then
+                            { enPassantRight
+                                | black =
+                                    selected.field
+                                        |> Tuple.second
+                                        |> (Rank.toInt >> (+) 1 >> Rank.fromInt)
+                                        |> Maybe.map
+                                            (\between ->
+                                                ( ( Tuple.first selected.field, between )
+                                                , targetField
+                                                )
+                                            )
+                                , white = Nothing
+                            }
+
+                        else
+                            { enPassantRight | white = Nothing }
+
+                    Black ->
+                        if
+                            (selected.name == Pawn)
+                                && (rankDiff selected.field targetField == 2)
+                        then
+                            { enPassantRight
+                                | white =
+                                    selected.field
+                                        |> Tuple.second
+                                        |> (Rank.toInt >> (+) -1 >> Rank.fromInt)
+                                        |> Maybe.map
+                                            (\between ->
+                                                ( ( Tuple.first selected.field, between )
+                                                , targetField
+                                                )
+                                            )
+                                , black = Nothing
+                            }
+
+                        else
+                            { enPassantRight | black = Nothing, white = Nothing }
         in
         Ok
             ( target
             , selected
             , { gameState
                 | pieces = target :: remainedPieces
-                , canCastle = nextCanCastle
+                , enPassantRight = nextEnPassantRight
+                , castlingRight = nextCastlingRight
                 , turn = nextTurn gameState.turn
               }
             )
@@ -152,16 +248,16 @@ castle side gameState =
         allowedToCastle =
             (case ( side, gameState.turn ) of
                 ( QueenSide, White ) ->
-                    gameState.canCastle.white.queenSide
+                    gameState.castlingRight.white.queenSide
 
                 ( KingSide, White ) ->
-                    gameState.canCastle.white.kingSide
+                    gameState.castlingRight.white.kingSide
 
                 ( QueenSide, Black ) ->
-                    gameState.canCastle.black.queenSide
+                    gameState.castlingRight.black.queenSide
 
                 ( KingSide, Black ) ->
-                    gameState.canCastle.black.kingSide
+                    gameState.castlingRight.black.kingSide
             )
                 && List.all
                     (\piece -> not <| List.member piece.field forbiddenFields)
@@ -199,15 +295,15 @@ castle side gameState =
 
     else
         let
-            canCastle =
+            castlingRight =
                 case gameState.turn of
                     White ->
                         { white = { queenSide = False, kingSide = False }
-                        , black = gameState.canCastle.black
+                        , black = gameState.castlingRight.black
                         }
 
                     Black ->
-                        { white = gameState.canCastle.white
+                        { white = gameState.castlingRight.white
                         , black = { queenSide = False, kingSide = False }
                         }
 
@@ -228,7 +324,7 @@ castle side gameState =
             , { gameState
                 | pieces = pieces
                 , turn = nextTurn gameState.turn
-                , canCastle = canCastle
+                , castlingRight = castlingRight
               }
             )
 
@@ -344,8 +440,8 @@ selectByName turn name pieces =
     List.filter (\piece -> piece.name == name && piece.color == turn) pieces
 
 
-isLegalMove : List Piece -> Field -> Piece -> Bool
-isLegalMove otherPieces ( nextFile, nextRank ) piece =
+isLegalMove : List Piece -> EnPassantRight -> Field -> Piece -> Bool
+isLegalMove otherPieces enPassantRight ( nextFile, nextRank ) piece =
     let
         ( prevFile, prevRank ) =
             piece.field
@@ -379,8 +475,12 @@ isLegalMove otherPieces ( nextFile, nextRank ) piece =
                     case piece.color of
                         White ->
                             let
+                                enPassantPiece =
+                                    Maybe.map Tuple.first enPassantRight.white
+
                                 hasEnemyPiece =
                                     List.any (\otherPiece -> otherPiece.field == ( nextFile, nextRank )) otherPieces
+                                        || (enPassantPiece == Just ( nextFile, nextRank ))
                             in
                             if not hasEnemyPiece then
                                 if Rank.toInt prevRank == 2 then
@@ -394,8 +494,12 @@ isLegalMove otherPieces ( nextFile, nextRank ) piece =
 
                         Black ->
                             let
+                                enPassantPiece =
+                                    Maybe.map Tuple.first enPassantRight.black
+
                                 hasEnemyPiece =
                                     List.any (\otherPiece -> otherPiece.field == ( nextFile, nextRank )) otherPieces
+                                        || (enPassantPiece == Just ( nextFile, nextRank ))
                             in
                             if not hasEnemyPiece then
                                 if Rank.toInt prevRank == 7 then
