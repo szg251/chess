@@ -1,14 +1,15 @@
 module GameLogic exposing (..)
 
 import Field exposing (Field)
-import File
+import File exposing (File)
+import Rank exposing (Rank)
 import InputState exposing (InputState(..), SelectionHelper(..))
 import Piece exposing (Color(..), Piece, PieceType(..))
 import Rank
 import Result.Extra as ResultE
 
 
-move : List Piece -> Field -> Piece -> Result String (List Piece)
+move : List Piece -> Field -> Piece -> Result String (Piece, Piece, List Piece)
 move pieces field selected =
     let
         otherPieces =
@@ -21,25 +22,25 @@ move pieces field selected =
         case selected.name of
             Pawn ->
                 if (Tuple.second >> Rank.toInt) field < 8 then
-                    Ok <| { selected | field = field } :: remainedPieces
+                    Ok ( { selected | field = field }, selected, remainedPieces)
 
                 else
-                    Ok <| { selected | name = Queen, field = field } :: remainedPieces
+                    Ok ( { selected | name = Queen, field = field }, selected, remainedPieces)
 
             _ ->
-                Ok <| { selected | field = field } :: remainedPieces
+                Ok ( { selected | field = field }, selected, remainedPieces)
 
     else
         Err "This move is not possible."
 
 
-movePiece : InputState -> Color -> List Piece -> Result String (List Piece)
+movePiece : InputState -> Color -> List Piece -> Result String (Piece, Piece, List Piece)
 movePiece inputState turn pieces =
     case inputState of
         Moved _ _ field ->
             let
                 attempts =
-                    InputState.getSelectedPieces inputState turn pieces
+                    getSelectedPieces inputState turn pieces
                         |> List.map (move pieces field)
                         |> ResultE.partition
             in
@@ -54,8 +55,73 @@ movePiece inputState turn pieces =
                     Err "Multiple possible moves. Try to specify which file or rank your piece is on. Ex. Rd5 -> Rad5"
 
         _ ->
-            Ok pieces
+            Err "Invalid input state"
 
+getSelectedPieces : InputState -> Color -> List Piece -> List Piece
+getSelectedPieces inputState turn pieces =
+    case inputState of
+        Selected name (Just (WithFile file)) ->
+            selectByNameAndFile turn name file pieces
+
+        Moved name (Just (WithFile file)) _ ->
+            selectByNameAndFile turn name file pieces
+
+        Selected name (Just (WithRank rank)) ->
+            selectByNameAndRank turn name rank pieces
+
+        Moved name (Just (WithRank rank)) _ ->
+            selectByNameAndRank turn name rank pieces
+
+        Selected name Nothing ->
+            selectByName turn name pieces
+
+        Moved name Nothing _ ->
+            selectByName turn name pieces
+
+        NotSelected ->
+            []
+
+getSelectedFields : InputState -> Color -> List Piece -> Result String (List Field)
+getSelectedFields inputState turn pieces =
+    case inputState of
+        Moved _ _ _ ->
+            case movePiece inputState turn pieces of
+                Ok (target, source, _) ->
+                    [ target, source ]
+                        |> List.map .field
+                        |> Ok
+
+
+                Err err -> 
+                    Err err
+        _ ->
+            getSelectedPieces inputState turn pieces
+                |> List.map .field
+                |> Ok
+
+selectByNameAndFile : Color -> PieceType -> File -> List Piece -> List Piece
+selectByNameAndFile turn name file pieces =
+    List.filter
+        (\piece ->
+            (piece.name == name)
+                && (piece.color == turn)
+                && (Tuple.first piece.field == file)
+        )
+        pieces
+
+selectByNameAndRank :Color -> PieceType -> Rank -> List Piece -> List Piece
+selectByNameAndRank turn name rank pieces=
+    List.filter
+        (\piece ->
+            (piece.name == name)
+                && (piece.color == turn)
+                && (Tuple.second piece.field == rank)
+        )
+        pieces
+
+selectByName : Color -> PieceType -> List Piece-> List Piece
+selectByName turn name pieces =
+    List.filter (\piece -> piece.name == name && piece.color == turn) pieces
 
 isLegalMove : List Piece -> Field -> Piece -> Bool
 isLegalMove otherPieces ( nextFile, nextRank ) piece =

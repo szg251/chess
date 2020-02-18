@@ -1,6 +1,6 @@
 module Board exposing (initPieces, view)
 
-import Field
+import Field exposing (Field)
 import File
 import Piece exposing (Color(..), Piece, PieceType(..))
 import Rank
@@ -50,7 +50,7 @@ initPieces =
     ]
 
 
-view : Int -> List Piece -> List Piece -> Svg msg
+view : Int -> List Field -> List Piece -> Svg msg
 view rotation selected pieces =
     let
         size =
@@ -73,7 +73,7 @@ view rotation selected pieces =
             (cartesianProduct
                 [ File.a, File.b, File.c, File.d, File.e, File.f, File.g, File.h ]
                 [ Rank.r1, Rank.r2, Rank.r3, Rank.r4, Rank.r5, Rank.r6, Rank.r7, Rank.r8 ]
-                (Field.view (List.map .field selected))
+                (Field.view selected)
                 ++ List.map (Piece.view rotation) pieces
             )
         ]
