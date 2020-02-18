@@ -291,7 +291,12 @@ castle side gameState =
                     { name = Rook, color = gameState.turn, field = ( File.f, rank ) }
     in
     if not allowedToCastle then
-        Err "You are not allowed to castle."
+        case side of
+            QueenSide ->
+                Err "You are not allowed to castle queen side."
+
+            KingSide ->
+                Err "You are not allowed to castle king side."
 
     else
         let
