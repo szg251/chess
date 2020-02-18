@@ -3,7 +3,7 @@ module GameLogic exposing (..)
 import Board
 import Field exposing (Field)
 import File exposing (File)
-import InputState exposing (InputState(..), SelectionHelper(..))
+import InputState exposing (InputState(..), SelectionHelper(..), Side(..))
 import Piece exposing (Color(..), Piece, PieceType(..))
 import Rank exposing (Rank)
 import Result.Extra as ResultE
@@ -40,6 +40,16 @@ type alias CanCastle =
     { kingSide : Bool
     , queenSide : Bool
     }
+
+
+nextTurn : Color -> Color
+nextTurn turn =
+    case turn of
+        White ->
+            Black
+
+        Black ->
+            White
 
 
 move : Field -> GameState -> Piece -> Result String ( Piece, Piece, GameState )
@@ -105,14 +115,6 @@ move field gameState selected =
 
                     _ ->
                         gameState.canCastle
-
-            nextTurn =
-                case gameState.turn of
-                    White ->
-                        Black
-
-                    Black ->
-                        White
         in
         Ok
             ( target
@@ -120,7 +122,7 @@ move field gameState selected =
             , { gameState
                 | pieces = target :: remainedPieces
                 , canCastle = nextCanCastle
-                , turn = nextTurn
+                , turn = nextTurn gameState.turn
               }
             )
 
@@ -128,8 +130,111 @@ move field gameState selected =
         Err "This move is not possible."
 
 
-movePiece : InputState -> GameState -> Result String ( Piece, Piece, GameState )
-movePiece inputState gameState =
+castle : Side -> GameState -> Result String ( Piece, Piece, GameState )
+castle side gameState =
+    let
+        rank =
+            case gameState.turn of
+                White ->
+                    Rank.r1
+
+                Black ->
+                    Rank.r8
+
+        forbiddenFields =
+            case side of
+                QueenSide ->
+                    [ ( File.b, rank ), ( File.c, rank ), ( File.d, rank ) ]
+
+                KingSide ->
+                    [ ( File.f, rank ), ( File.g, rank ) ]
+
+        allowedToCastle =
+            (case ( side, gameState.turn ) of
+                ( QueenSide, White ) ->
+                    gameState.canCastle.white.queenSide
+
+                ( KingSide, White ) ->
+                    gameState.canCastle.white.kingSide
+
+                ( QueenSide, Black ) ->
+                    gameState.canCastle.black.queenSide
+
+                ( KingSide, Black ) ->
+                    gameState.canCastle.black.kingSide
+            )
+                && List.all
+                    (\piece -> not <| List.member piece.field forbiddenFields)
+                    gameState.pieces
+
+        prevKing =
+            { name = King, color = gameState.turn, field = ( File.e, rank ) }
+
+        nextKing =
+            case side of
+                QueenSide ->
+                    { name = King, color = gameState.turn, field = ( File.c, rank ) }
+
+                KingSide ->
+                    { name = King, color = gameState.turn, field = ( File.g, rank ) }
+
+        prevRook =
+            case side of
+                QueenSide ->
+                    { name = Rook, color = gameState.turn, field = ( File.a, rank ) }
+
+                KingSide ->
+                    { name = Rook, color = gameState.turn, field = ( File.h, rank ) }
+
+        nextRook =
+            case side of
+                QueenSide ->
+                    { name = Rook, color = gameState.turn, field = ( File.d, rank ) }
+
+                KingSide ->
+                    { name = Rook, color = gameState.turn, field = ( File.f, rank ) }
+    in
+    if not allowedToCastle then
+        Err "You are not allowed to castle."
+
+    else
+        let
+            canCastle =
+                case gameState.turn of
+                    White ->
+                        { white = { queenSide = False, kingSide = False }
+                        , black = gameState.canCastle.black
+                        }
+
+                    Black ->
+                        { white = gameState.canCastle.white
+                        , black = { queenSide = False, kingSide = False }
+                        }
+
+            pieces =
+                nextKing
+                    :: nextRook
+                    :: List.filter
+                        (\piece ->
+                            not <|
+                                List.member piece
+                                    [ prevKing, prevRook ]
+                        )
+                        gameState.pieces
+        in
+        Ok
+            ( prevKing
+            , nextKing
+            , { gameState
+                | pieces = pieces
+                , turn = nextTurn gameState.turn
+                , canCastle = canCastle
+              }
+            )
+
+
+evalInputState : InputState -> GameState -> Result String ( Piece, Piece, GameState )
+evalInputState inputState gameState =
     case inputState of
         Moved _ _ field ->
             let
@@ -147,6 +252,9 @@ movePiece inputState gameState =
 
                 _ ->
                     Err "Multiple possible moves. Try to specify which file or rank your piece is on. Ex. Rd5 -> Rad5"
+
+        Castled side ->
+            castle side gameState
 
         _ ->
             Err "Invalid input state"
@@ -173,10 +281,7 @@ getSelectedPieces inputState turn pieces =
         Moved name Nothing _ ->
             selectByName turn name pieces
 
-        CastledKingSide ->
-            []
-
-        CastledQueenSide ->
+        Castled _ ->
             []
 
         NotSelected ->
@@ -187,7 +292,17 @@ getSelectedFields : InputState -> GameState -> Result String (List Field)
 getSelectedFields inputState gameState =
     case inputState of
         Moved _ _ _ ->
-            case movePiece inputState gameState of
+            case evalInputState inputState gameState of
+                Ok ( target, source, _ ) ->
+                    [ target, source ]
+                        |> List.map .field
+                        |> Ok
+
+                Err err ->
+                    Err err
+
+        Castled side ->
+            case castle side gameState of
                 Ok ( target, source, _ ) ->
                     [ target, source ]
                         |> List.map .field

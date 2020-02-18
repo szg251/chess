@@ -77,7 +77,7 @@ update msg model =
             )
 
         Move ->
-            case GameLogic.movePiece model.inputState model.gameState of
+            case GameLogic.evalInputState model.inputState model.gameState of
                 Ok ( _, _, gameState ) ->
                     ( { model
                         | input = ""
