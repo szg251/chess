@@ -1,47 +1,141 @@
 module GameLogic exposing (..)
 
+import Board
 import Field exposing (Field)
 import File exposing (File)
-import Rank exposing (Rank)
 import InputState exposing (InputState(..), SelectionHelper(..))
 import Piece exposing (Color(..), Piece, PieceType(..))
-import Rank
+import Rank exposing (Rank)
 import Result.Extra as ResultE
 
 
-move : List Piece -> Field -> Piece -> Result String (Piece, Piece, List Piece)
-move pieces field selected =
+type alias GameState =
+    { pieces : List Piece
+    , turn : Color
+    , canCastle :
+        { black : CanCastle
+        , white : CanCastle
+        }
+    }
+
+
+init : GameState
+init =
+    { pieces = Board.initPieces
+    , turn = White
+    , canCastle =
+        { black =
+            { kingSide = True
+            , queenSide = True
+            }
+        , white =
+            { kingSide = True
+            , queenSide = True
+            }
+        }
+    }
+
+
+type alias CanCastle =
+    { kingSide : Bool
+    , queenSide : Bool
+    }
+
+
+move : Field -> GameState -> Piece -> Result String ( Piece, Piece, GameState )
+move field gameState selected =
     let
         otherPieces =
-            List.filter (\piece -> piece /= selected) pieces
+            List.filter (\piece -> piece /= selected) gameState.pieces
 
         remainedPieces =
             List.filter (\piece -> piece.field /= field) otherPieces
     in
     if isLegalMove otherPieces field selected then
-        case selected.name of
-            Pawn ->
-                if (Tuple.second >> Rank.toInt) field < 8 then
-                    Ok ( { selected | field = field }, selected, remainedPieces)
+        let
+            target =
+                case selected.name of
+                    Pawn ->
+                        if (Tuple.second >> Rank.toInt) field < 8 then
+                            { selected | field = field }
 
-                else
-                    Ok ( { selected | name = Queen, field = field }, selected, remainedPieces)
+                        else
+                            { selected | name = Queen, field = field }
 
-            _ ->
-                Ok ( { selected | field = field }, selected, remainedPieces)
+                    _ ->
+                        { selected | field = field }
+
+            nextCanCastle =
+                let
+                    canCastle =
+                        gameState.canCastle
+
+                    updateWhite update =
+                        { canCastle | white = update canCastle.white }
+
+                    updateBlack update =
+                        { canCastle | black = update canCastle.black }
+                in
+                case ( selected.name, gameState.turn ) of
+                    ( King, White ) ->
+                        updateWhite (always { kingSide = False, queenSide = False })
+
+                    ( King, Black ) ->
+                        updateBlack (always { kingSide = False, queenSide = False })
+
+                    ( Rook, White ) ->
+                        if selected.field == ( File.a, Rank.r1 ) then
+                            updateWhite (\c -> { c | queenSide = False })
+
+                        else if selected.field == ( File.h, Rank.r1 ) then
+                            updateWhite (\c -> { c | kingSide = False })
+
+                        else
+                            gameState.canCastle
+
+                    ( Rook, Black ) ->
+                        if selected.field == ( File.a, Rank.r8 ) then
+                            updateWhite (\c -> { c | queenSide = False })
+
+                        else if selected.field == ( File.h, Rank.r8 ) then
+                            updateWhite (\c -> { c | kingSide = False })
+
+                        else
+                            gameState.canCastle
+
+                    _ ->
+                        gameState.canCastle
+
+            nextTurn =
+                case gameState.turn of
+                    White ->
+                        Black
+
+                    Black ->
+                        White
+        in
+        Ok
+            ( target
+            , selected
+            , { gameState
+                | pieces = target :: remainedPieces
+                , canCastle = nextCanCastle
+                , turn = nextTurn
+              }
+            )
 
     else
         Err "This move is not possible."
 
 
-movePiece : InputState -> Color -> List Piece -> Result String (Piece, Piece, List Piece)
-movePiece inputState turn pieces =
+movePiece : InputState -> GameState -> Result String ( Piece, Piece, GameState )
+movePiece inputState gameState =
     case inputState of
         Moved _ _ field ->
             let
                 attempts =
-                    getSelectedPieces inputState turn pieces
-                        |> List.map (move pieces field)
+                    getSelectedPieces inputState gameState.turn gameState.pieces
+                        |> List.map (move field gameState)
                         |> ResultE.partition
             in
             case attempts of
@@ -56,6 +150,7 @@ movePiece inputState turn pieces =
 
         _ ->
             Err "Invalid input state"
+
 
 getSelectedPieces : InputState -> Color -> List Piece -> List Piece
 getSelectedPieces inputState turn pieces =
@@ -78,26 +173,34 @@ getSelectedPieces inputState turn pieces =
         Moved name Nothing _ ->
             selectByName turn name pieces
 
+        CastledKingSide ->
+            []
+
+        CastledQueenSide ->
+            []
+
         NotSelected ->
             []
 
-getSelectedFields : InputState -> Color -> List Piece -> Result String (List Field)
-getSelectedFields inputState turn pieces =
+
+getSelectedFields : InputState -> GameState -> Result String (List Field)
+getSelectedFields inputState gameState =
     case inputState of
         Moved _ _ _ ->
-            case movePiece inputState turn pieces of
-                Ok (target, source, _) ->
+            case movePiece inputState gameState of
+                Ok ( target, source, _ ) ->
                     [ target, source ]
                         |> List.map .field
                         |> Ok
 
-
-                Err err -> 
+                Err err ->
                     Err err
+
         _ ->
-            getSelectedPieces inputState turn pieces
+            getSelectedPieces inputState gameState.turn gameState.pieces
                 |> List.map .field
                 |> Ok
+
 
 selectByNameAndFile : Color -> PieceType -> File -> List Piece -> List Piece
 selectByNameAndFile turn name file pieces =
@@ -109,8 +212,9 @@ selectByNameAndFile turn name file pieces =
         )
         pieces
 
-selectByNameAndRank :Color -> PieceType -> Rank -> List Piece -> List Piece
-selectByNameAndRank turn name rank pieces=
+
+selectByNameAndRank : Color -> PieceType -> Rank -> List Piece -> List Piece
+selectByNameAndRank turn name rank pieces =
     List.filter
         (\piece ->
             (piece.name == name)
@@ -119,9 +223,11 @@ selectByNameAndRank turn name rank pieces=
         )
         pieces
 
-selectByName : Color -> PieceType -> List Piece-> List Piece
+
+selectByName : Color -> PieceType -> List Piece -> List Piece
 selectByName turn name pieces =
     List.filter (\piece -> piece.name == name && piece.color == turn) pieces
+
 
 isLegalMove : List Piece -> Field -> Piece -> Bool
 isLegalMove otherPieces ( nextFile, nextRank ) piece =

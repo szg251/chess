@@ -2,7 +2,7 @@ module InputState exposing (..)
 
 import Field exposing (Field)
 import File exposing (File)
-import Parser exposing ((|.), (|=), Parser, backtrackable, end, oneOf, succeed, symbol)
+import Parser exposing ((|.), (|=), Parser, backtrackable, end, oneOf, succeed, symbol, keyword)
 import Piece exposing (Color(..), Piece, PieceType(..))
 import Rank exposing (Rank)
 
@@ -11,6 +11,8 @@ type InputState
     = NotSelected
     | Selected PieceType (Maybe SelectionHelper)
     | Moved PieceType (Maybe SelectionHelper) Field
+    | CastledKingSide
+    | CastledQueenSide
 
 
 type SelectionHelper
@@ -53,5 +55,11 @@ parser =
         , succeed Selected
             |= Piece.parser
             |= Parser.map Just selectionHelperParser
+            |. end
+        , succeed CastledQueenSide
+            |. keyword "0-0-0"
+            |. end
+        , succeed CastledKingSide
+            |. keyword "0-0"
             |. end
         ]

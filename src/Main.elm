@@ -3,13 +3,11 @@ module Main exposing (main)
 import Board
 import Browser
 import Browser.Dom as Dom
-import File exposing (File)
-import GameLogic
+import GameLogic exposing (GameState)
 import Html exposing (Html, button, div, form, input, label, text)
 import Html.Attributes exposing (checked, for, id, style, type_, value)
 import Html.Events exposing (onClick, onInput, onSubmit)
 import InputState exposing (InputState(..))
-import Maybe.Extra as MaybeE
 import Parser
 import Piece exposing (Color(..), Piece, PieceType(..))
 import Result.Extra as ResultE
@@ -17,9 +15,7 @@ import Task
 
 
 type alias Model =
-    { selected : Maybe Piece
-    , pieces : List Piece
-    , turn : Color
+    { gameState : GameState
     , rotateOnTurn : Bool
     , input : String
     , inputState : InputState
@@ -29,9 +25,7 @@ type alias Model =
 
 init : () -> ( Model, Cmd Msg )
 init _ =
-    ( { selected = Nothing
-      , pieces = Board.initPieces
-      , turn = White
+    ( { gameState = GameLogic.init
       , rotateOnTurn = True
       , input = ""
       , inputState = NotSelected
@@ -49,16 +43,6 @@ type Msg
     | Restart
 
 
-changeTurn : Color -> Color
-changeTurn color =
-    case color of
-        White ->
-            Black
-
-        Black ->
-            White
-
-
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
@@ -69,9 +53,7 @@ update msg model =
             ( { model | rotateOnTurn = not model.rotateOnTurn }, Cmd.none )
 
         Restart ->
-            ( { selected = Nothing
-              , pieces = Board.initPieces
-              , turn = White
+            ( { gameState = GameLogic.init
               , rotateOnTurn = True
               , input = ""
               , inputState = NotSelected
@@ -95,13 +77,12 @@ update msg model =
             )
 
         Move ->
-            case GameLogic.movePiece model.inputState model.turn model.pieces of
-                Ok ( moved, _,  nextPieces) ->
+            case GameLogic.movePiece model.inputState model.gameState of
+                Ok ( _, _, gameState ) ->
                     ( { model
                         | input = ""
                         , inputState = NotSelected
-                        , pieces = moved :: nextPieces
-                        , turn = changeTurn model.turn
+                        , gameState = gameState
                         , error = Nothing
                       }
                     , Cmd.none
@@ -120,10 +101,9 @@ update msg model =
 view : Model -> Html Msg
 view model =
     let
-        ( selectedFields, error) =
-            GameLogic.getSelectedFields model.inputState model.turn model.pieces
-                |> \result -> ( Result.withDefault [] result, ResultE.error result)
-
+        ( selectedFields, error ) =
+            GameLogic.getSelectedFields model.inputState model.gameState
+                |> (\result -> ( Result.withDefault [] result, ResultE.error result ))
     in
     div []
         [ div []
@@ -138,14 +118,14 @@ view model =
             , button [ onClick Restart ] [ text "Restart" ]
             ]
         , Board.view
-            (if model.rotateOnTurn && model.turn == Black then
+            (if model.rotateOnTurn && model.gameState.turn == Black then
                 180
 
              else
                 0
             )
             selectedFields
-            (MaybeE.toList model.selected ++ model.pieces)
+            model.gameState.pieces
         , div [] [ text "The pieces are controlled by algebraic chess notation like Nc3" ]
         , form [ onSubmit Move ]
             [ input [ id "input-bar", onInput Input, value model.input ] []
