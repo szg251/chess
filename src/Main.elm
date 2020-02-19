@@ -4,8 +4,8 @@ import Board
 import Browser
 import Browser.Dom as Dom
 import GameLogic exposing (GameState)
-import Html exposing (Html, button, div, form, input, label, text)
-import Html.Attributes exposing (checked, for, id, style, type_, value)
+import Html exposing (Html, a, button, div, form, input, label, text)
+import Html.Attributes exposing (checked, for, href, id, style, target, type_, value)
 import Html.Events exposing (onClick, onInput, onSubmit)
 import InputState exposing (InputState(..))
 import Parser
@@ -126,7 +126,15 @@ view model =
             )
             selectedFields
             model.gameState.pieces
-        , div [] [ text "The pieces are controlled by algebraic chess notation like Nc3" ]
+        , div []
+            [ text "The pieces are controlled by "
+            , a
+                [ href "https://www.cheatography.com/davechild/cheat-sheets/chess-algebraic-notation/"
+                , target "blank"
+                ]
+                [ text "algebraic notation" ]
+            , text " like Nc3"
+            ]
         , form [ onSubmit Move ]
             [ input [ id "input-bar", onInput Input, value model.input ] []
             ]
