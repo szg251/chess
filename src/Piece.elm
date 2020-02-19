@@ -1,4 +1,4 @@
-module Piece exposing (Color(..), Field, Piece, PieceType(..), parser, view)
+module Piece exposing (Color(..), Field, Piece, PieceType(..), parser, serialize, view)
 
 import Field exposing (fileToX, rankToY)
 import File exposing (File)
@@ -23,6 +23,28 @@ parser =
         , succeed King |. symbol "K"
         , succeed Pawn |. symbol ""
         ]
+
+
+serialize : PieceType -> String
+serialize pieceType =
+    case pieceType of
+        Pawn ->
+            ""
+
+        Rook ->
+            "R"
+
+        Knight ->
+            "N"
+
+        Bishop ->
+            "B"
+
+        Queen ->
+            "Q"
+
+        King ->
+            "K"
 
 
 type alias Field =

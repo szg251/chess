@@ -14,6 +14,7 @@ type alias GameState =
     , turn : Color
     , enPassantRight : EnPassantRight
     , castlingRight : CastlingRight
+    , history : List String
     }
 
 
@@ -35,6 +36,7 @@ init =
             , queenSide = True
             }
         }
+    , history = []
     }
 
 
@@ -345,8 +347,14 @@ evalInputState inputState gameState =
                         |> ResultE.partition
             in
             case attempts of
-                ( [ onePossibleMove ], _ ) ->
-                    Ok onePossibleMove
+                ( [ ( target, source, nextGameState ) ], _ ) ->
+                    Ok
+                        ( target
+                        , source
+                        , { nextGameState
+                            | history = nextGameState.history ++ [ InputState.serialize inputState ]
+                          }
+                        )
 
                 ( [], err :: _ ) ->
                     Err err
@@ -364,22 +372,22 @@ evalInputState inputState gameState =
 getSelectedPieces : InputState -> Color -> List Piece -> List Piece
 getSelectedPieces inputState turn pieces =
     case inputState of
-        Selected name (Just (WithFile file)) ->
+        Selected name (WithFile file) ->
             selectByNameAndFile turn name file pieces
 
-        Moved name (Just (WithFile file)) _ ->
+        Moved name (WithFile file) _ ->
             selectByNameAndFile turn name file pieces
 
-        Selected name (Just (WithRank rank)) ->
+        Selected name (WithRank rank) ->
             selectByNameAndRank turn name rank pieces
 
-        Moved name (Just (WithRank rank)) _ ->
+        Moved name (WithRank rank) _ ->
             selectByNameAndRank turn name rank pieces
 
-        Selected name Nothing ->
+        Selected name NoSelectionHelper ->
             selectByName turn name pieces
 
-        Moved name Nothing _ ->
+        Moved name NoSelectionHelper _ ->
             selectByName turn name pieces
 
         Castled _ ->

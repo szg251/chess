@@ -1,4 +1,4 @@
-module File exposing (File, a, b, c, d, e, f, fromChar, fromInt, g, h, parser, toChar, toInt)
+module File exposing (File, a, b, c, d, e, f, fromChar, fromInt, g, h, parser, serialize, toChar, toInt)
 
 import Parser exposing ((|.), Parser, oneOf, succeed, symbol)
 
@@ -19,6 +19,11 @@ parser =
         , succeed (File 'g') |. symbol "g"
         , succeed (File 'h') |. symbol "h"
         ]
+
+
+serialize : File -> String
+serialize (File char) =
+    String.fromChar char
 
 
 toInt : File -> Int

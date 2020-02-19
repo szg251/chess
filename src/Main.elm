@@ -4,8 +4,8 @@ import Board
 import Browser
 import Browser.Dom as Dom
 import GameLogic exposing (GameState)
-import Html exposing (Html, a, button, div, form, input, label, text)
-import Html.Attributes exposing (checked, for, href, id, style, target, type_, value)
+import Html exposing (Html, a, br, button, div, form, input, label, li, ol, strong, text, textarea)
+import Html.Attributes exposing (checked, disabled, for, href, id, target, type_, value)
 import Html.Events exposing (onClick, onInput, onSubmit)
 import InputState exposing (InputState(..))
 import Parser
@@ -138,8 +138,27 @@ view model =
         , form [ onSubmit Move ]
             [ input [ id "input-bar", onInput Input, value model.input ] []
             ]
-        , div [ style "fontWeight" "bold" ] [ text <| Maybe.withDefault "" error ]
+        , strong [] [ text <| Maybe.withDefault "" error ]
+        , viewHistory model.gameState.history
         ]
+
+
+viewHistory : List String -> Html Msg
+viewHistory history =
+    let
+        groupMoves moves =
+            case moves of
+                whiteMove :: blackMove :: rest ->
+                    (whiteMove ++ " " ++ blackMove) :: groupMoves rest
+
+                lastMove ->
+                    lastMove
+    in
+    ol
+        []
+        (groupMoves history
+            |> List.map (li [] << List.singleton << text)
+        )
 
 
 subscriptions : Model -> Sub Msg

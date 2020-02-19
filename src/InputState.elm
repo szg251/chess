@@ -9,8 +9,8 @@ import Rank exposing (Rank)
 
 type InputState
     = NotSelected
-    | Selected PieceType (Maybe SelectionHelper)
-    | Moved PieceType (Maybe SelectionHelper) Field
+    | Selected PieceType SelectionHelper
+    | Moved PieceType SelectionHelper Field
     | Castled Side
 
 
@@ -20,7 +20,8 @@ type Side
 
 
 type SelectionHelper
-    = WithFile File
+    = NoSelectionHelper
+    | WithFile File
     | WithRank Rank
 
 
@@ -29,7 +30,21 @@ selectionHelperParser =
     oneOf
         [ Parser.map WithFile File.parser
         , Parser.map WithRank Rank.parser
+        , succeed NoSelectionHelper
         ]
+
+
+serializeSelectionHelper : SelectionHelper -> String
+serializeSelectionHelper selectionHelper =
+    case selectionHelper of
+        NoSelectionHelper ->
+            ""
+
+        WithFile file ->
+            File.serialize file
+
+        WithRank rank ->
+            Rank.serialize rank
 
 
 parser : Parser InputState
@@ -40,25 +55,25 @@ parser =
         , backtrackable <|
             succeed Moved
                 |= Piece.parser
-                |= succeed Nothing
+                |= succeed NoSelectionHelper
                 |. oneOf [ succeed () |. symbol "x", succeed () ]
                 |= Field.parser
                 |. end
         , backtrackable <|
             succeed Moved
                 |= Piece.parser
-                |= Parser.map Just selectionHelperParser
+                |= selectionHelperParser
                 |= Field.parser
                 |. oneOf [ succeed () |. symbol "x", succeed () ]
                 |. end
         , backtrackable <|
             succeed Selected
                 |= Piece.parser
-                |= succeed Nothing
+                |= succeed NoSelectionHelper
                 |. end
         , succeed Selected
             |= Piece.parser
-            |= Parser.map Just selectionHelperParser
+            |= selectionHelperParser
             |. end
         , succeed (Castled QueenSide)
             |. keyword "0-0-0"
@@ -67,3 +82,24 @@ parser =
             |. keyword "0-0"
             |. end
         ]
+
+
+serialize : InputState -> String
+serialize inputState =
+    case inputState of
+        NotSelected ->
+            ""
+
+        Selected pieceType selectionHelper ->
+            Piece.serialize pieceType
+
+        Moved pieceType selectionHelper field ->
+            Piece.serialize pieceType
+                ++ serializeSelectionHelper selectionHelper
+                ++ Field.serialize field
+
+        Castled QueenSide ->
+            "0-0-0"
+
+        Castled KingSide ->
+            "0-0"

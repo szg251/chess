@@ -1,4 +1,4 @@
-module Field exposing (Field, fieldSize, fileToX, parser, rankToY, view)
+module Field exposing (Field, fieldSize, fileToX, parser, rankToY, serialize, view)
 
 import File exposing (File)
 import Parser exposing ((|=), Parser, succeed)
@@ -12,6 +12,11 @@ parser =
     succeed Tuple.pair
         |= File.parser
         |= Rank.parser
+
+
+serialize : Field -> String
+serialize ( file, rank ) =
+    File.serialize file ++ Rank.serialize rank
 
 
 type alias Field =

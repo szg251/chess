@@ -1,4 +1,4 @@
-module Rank exposing (Rank, fromInt, parser, r1, r2, r3, r4, r5, r6, r7, r8, toInt)
+module Rank exposing (Rank, fromInt, parser, r1, r2, r3, r4, r5, r6, r7, r8, serialize, toInt)
 
 import Parser exposing ((|.), Parser, oneOf, succeed, symbol)
 
@@ -19,6 +19,11 @@ parser =
         , succeed (Rank 7) |. symbol "7"
         , succeed (Rank 8) |. symbol "8"
         ]
+
+
+serialize : Rank -> String
+serialize (Rank int) =
+    String.fromInt int
 
 
 fromInt : Int -> Maybe Rank
