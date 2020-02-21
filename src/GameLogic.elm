@@ -339,7 +339,7 @@ castle side gameState =
 evalInputState : InputState -> GameState -> Result String ( Piece, Piece, GameState )
 evalInputState inputState gameState =
     case inputState of
-        Moved _ _ field ->
+        Moved _ _ field _ ->
             let
                 attempts =
                     getSelectedPieces inputState gameState.turn gameState.pieces
@@ -375,19 +375,19 @@ getSelectedPieces inputState turn pieces =
         Selected name (WithFile file) ->
             selectByNameAndFile turn name file pieces
 
-        Moved name (WithFile file) _ ->
+        Moved name (WithFile file) _ _ ->
             selectByNameAndFile turn name file pieces
 
         Selected name (WithRank rank) ->
             selectByNameAndRank turn name rank pieces
 
-        Moved name (WithRank rank) _ ->
+        Moved name (WithRank rank) _ _ ->
             selectByNameAndRank turn name rank pieces
 
         Selected name NoSelectionHelper ->
             selectByName turn name pieces
 
-        Moved name NoSelectionHelper _ ->
+        Moved name NoSelectionHelper _ _ ->
             selectByName turn name pieces
 
         Castled _ ->
@@ -400,7 +400,7 @@ getSelectedPieces inputState turn pieces =
 getSelectedFields : InputState -> GameState -> Result String (List Field)
 getSelectedFields inputState gameState =
     case inputState of
-        Moved _ _ _ ->
+        Moved _ _ _ _ ->
             case evalInputState inputState gameState of
                 Ok ( target, source, _ ) ->
                     [ target, source ]

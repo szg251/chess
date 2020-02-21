@@ -2,6 +2,7 @@ module InputState exposing (..)
 
 import Field exposing (Field)
 import File exposing (File)
+import Maybe.Extra as MaybeE
 import Parser exposing ((|.), (|=), Parser, backtrackable, end, keyword, oneOf, succeed, symbol)
 import Piece exposing (Color(..), Piece, PieceType(..))
 import Rank exposing (Rank)
@@ -10,7 +11,7 @@ import Rank exposing (Rank)
 type InputState
     = NotSelected
     | Selected PieceType SelectionHelper
-    | Moved PieceType SelectionHelper Field
+    | Moved PieceType SelectionHelper Field (List ExtraInfo)
     | Castled Side
 
 
@@ -47,24 +48,45 @@ serializeSelectionHelper selectionHelper =
             Rank.serialize rank
 
 
+type ExtraInfo
+    = Takes
+    | PromoteTo Piece
+
+
 parser : Parser InputState
 parser =
+    let
+        toMoved piece selectionHelper maybeTakes field =
+            let
+                extraInfo =
+                    MaybeE.toList maybeTakes
+            in
+            Moved piece selectionHelper field extraInfo
+    in
     oneOf
         [ succeed NotSelected
             |. end
         , backtrackable <|
-            succeed Moved
+            succeed toMoved
                 |= Piece.parser
                 |= succeed NoSelectionHelper
-                |. oneOf [ succeed () |. symbol "x", succeed () ]
+                |= oneOf
+                    [ succeed (Just Takes)
+                        |. symbol "x"
+                    , succeed Nothing
+                    ]
                 |= Field.parser
                 |. end
         , backtrackable <|
-            succeed Moved
+            succeed toMoved
                 |= Piece.parser
-                |= selectionHelperParser
+                |= backtrackable selectionHelperParser
+                |= oneOf
+                    [ succeed (Just Takes)
+                        |. symbol "x"
+                    , succeed Nothing
+                    ]
                 |= Field.parser
-                |. oneOf [ succeed () |. symbol "x", succeed () ]
                 |. end
         , backtrackable <|
             succeed Selected
@@ -93,7 +115,7 @@ serialize inputState =
         Selected pieceType selectionHelper ->
             Piece.serialize pieceType
 
-        Moved pieceType selectionHelper field ->
+        Moved pieceType selectionHelper field _ ->
             Piece.serialize pieceType
                 ++ serializeSelectionHelper selectionHelper
                 ++ Field.serialize field
