@@ -29,6 +29,14 @@ testCases =
     , ( "King moved", "Ke6", Moved King NoSelectionHelper ( File.e, Rank.r6 ) [] )
     , ( "Rook moved with file helper", "Rae6", Moved Rook (WithFile File.a) ( File.e, Rank.r6 ) [] )
     , ( "Rook moved with rank helper", "R1e6", Moved Rook (WithRank Rank.r1) ( File.e, Rank.r6 ) [] )
+    , ( "Queen moved with field helper"
+      , "Qh4e1"
+      , Moved Queen (WithField ( File.h, Rank.r4 )) ( File.e, Rank.r1 ) []
+      )
+    , ( "Queen takes with field helper"
+      , "Qh4xe1"
+      , Moved Queen (WithField ( File.h, Rank.r4 )) ( File.e, Rank.r1 ) [ Takes ]
+      )
     , ( "Rook takes", "Rxe6", Moved Rook NoSelectionHelper ( File.e, Rank.r6 ) [ Takes ] )
     , ( "Rook takes with file helper", "Raxe6", Moved Rook (WithFile File.a) ( File.e, Rank.r6 ) [ Takes ] )
     , ( "Rook takes with rank helper", "R1xe6", Moved Rook (WithRank Rank.r1) ( File.e, Rank.r6 ) [ Takes ] )

@@ -25,20 +25,14 @@ type SelectionHelper
     = NoSelectionHelper
     | WithFile File
     | WithRank Rank
-
-
-
--- | WithBoth File Rank
+    | WithField Field
 
 
 selectionHelperParser : Parser SelectionHelper
 selectionHelperParser =
     oneOf
-        [ Parser.map WithFile File.parser
-        , Parser.map WithRank Rank.parser
-
-        -- , Parser.map2 WithBoth File.parser Rank.parser
-        , succeed NoSelectionHelper
+        [ Parser.map WithFile <| backtrackable File.parser
+        , Parser.map WithRank <| backtrackable Rank.parser
         ]
 
 
@@ -53,6 +47,9 @@ serializeSelectionHelper selectionHelper =
 
         WithRank rank ->
             Rank.serialize rank
+
+        WithField field ->
+            Field.serialize field
 
 
 type ExtraInfo
@@ -96,8 +93,12 @@ parser =
         selectionHelperToTargetParser =
             oneOf
                 [ succeed (\x y z -> ( x, y, z ))
-                    |= succeed NoSelectionHelper
+                    |= Parser.map WithField (backtrackable Field.parser)
                     |= takesParser
+                    |= Field.parser
+                , succeed (\x y z -> ( x, y, z ))
+                    |= succeed NoSelectionHelper
+                    |= backtrackable takesParser
                     |= backtrackable Field.parser
                 , succeed (\x y z -> ( x, y, z ))
                     |= selectionHelperParser

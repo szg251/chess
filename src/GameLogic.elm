@@ -435,6 +435,12 @@ getSelectedPieces inputState turn pieces =
         Moved name (WithRank rank) _ _ ->
             selectByNameAndRank turn name rank pieces
 
+        Selected name (WithField field) ->
+            selectByNameAndField turn name field pieces
+
+        Moved name (WithField field) _ _ ->
+            selectByNameAndField turn name field pieces
+
         Selected name NoSelectionHelper ->
             selectByName turn name pieces
 
@@ -495,6 +501,17 @@ selectByNameAndRank turn name rank pieces =
             (piece.name == name)
                 && (piece.color == turn)
                 && (Tuple.second piece.field == rank)
+        )
+        pieces
+
+
+selectByNameAndField : Color -> PieceType -> Field -> List Piece -> List Piece
+selectByNameAndField turn name field pieces =
+    List.filter
+        (\piece ->
+            (piece.name == name)
+                && (piece.color == turn)
+                && (piece.field == field)
         )
         pieces
 
