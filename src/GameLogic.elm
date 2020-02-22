@@ -3,7 +3,7 @@ module GameLogic exposing (..)
 import Board
 import Field exposing (Field)
 import File exposing (File)
-import InputState exposing (InputState(..), SelectionHelper(..), Side(..))
+import InputState exposing (ExtraInfo(..), InputState(..), SelectionHelper(..), Side(..))
 import Piece exposing (Color(..), Piece, PieceType(..))
 import Rank exposing (Rank)
 import Result.Extra as ResultE
@@ -68,8 +68,8 @@ nextTurn turn =
             White
 
 
-move : Field -> GameState -> Piece -> Result String ( Piece, Piece, GameState )
-move targetField gameState selected =
+move : Field -> List ExtraInfo -> GameState -> Piece -> Result String ( Piece, Piece, GameState )
+move targetField extraInfo gameState selected =
     let
         otherPieces =
             List.filter (\piece -> piece /= selected) gameState.pieces
@@ -105,13 +105,18 @@ move targetField gameState selected =
     if isLegalMove otherPieces gameState.enPassantRight targetField selected then
         let
             target =
+                let
+                    promotesTo =
+                        InputState.getPromotesTo extraInfo
+                            |> Maybe.withDefault Queen
+                in
                 case selected.name of
                     Pawn ->
                         if (Tuple.second >> Rank.toInt) targetField < 8 then
                             { selected | field = targetField }
 
                         else
-                            { selected | name = Queen, field = targetField }
+                            { selected | name = promotesTo, field = targetField }
 
                     _ ->
                         { selected | field = targetField }
@@ -339,11 +344,11 @@ castle side gameState =
 evalInputState : InputState -> GameState -> Result String ( Piece, Piece, GameState )
 evalInputState inputState gameState =
     case inputState of
-        Moved _ _ field _ ->
+        Moved _ _ field extraInfo ->
             let
                 attempts =
                     getSelectedPieces inputState gameState.turn gameState.pieces
-                        |> List.map (move field gameState)
+                        |> List.map (move field extraInfo gameState)
                         |> ResultE.partition
             in
             case attempts of

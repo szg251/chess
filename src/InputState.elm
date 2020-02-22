@@ -27,11 +27,17 @@ type SelectionHelper
     | WithRank Rank
 
 
+
+-- | WithBoth File Rank
+
+
 selectionHelperParser : Parser SelectionHelper
 selectionHelperParser =
     oneOf
         [ Parser.map WithFile File.parser
         , Parser.map WithRank Rank.parser
+
+        -- , Parser.map2 WithBoth File.parser Rank.parser
         , succeed NoSelectionHelper
         ]
 
@@ -127,6 +133,27 @@ parser =
         ]
 
 
+getPromotesTo : List ExtraInfo -> Maybe PieceType
+getPromotesTo extraInfo =
+    case
+        ListE.find
+            (\info ->
+                case info of
+                    PromotesTo _ ->
+                        True
+
+                    _ ->
+                        False
+            )
+            extraInfo
+    of
+        Just (PromotesTo pieceType) ->
+            Just pieceType
+
+        _ ->
+            Nothing
+
+
 serialize : InputState -> String
 serialize inputState =
     let
@@ -145,19 +172,8 @@ serialize inputState =
                 ""
 
         serializePromotesTo extraInfo =
-            case
-                ListE.find
-                    (\info ->
-                        case info of
-                            PromotesTo _ ->
-                                True
-
-                            _ ->
-                                False
-                    )
-                    extraInfo
-            of
-                Just (PromotesTo pieceType) ->
+            case getPromotesTo extraInfo of
+                Just pieceType ->
                     "=" ++ Piece.serialize pieceType
 
                 _ ->
