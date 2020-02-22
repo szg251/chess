@@ -56,15 +56,17 @@ type ExtraInfo
     = Takes
     | PromotesTo PieceType
     | EnPassant
+    | Check
+    | Checkmate
 
 
 parser : Parser InputState
 parser =
     let
-        toMoved piece ( selectionHelper, maybeTakes, field ) maybePromotion maybeEnPassant =
+        toMoved piece ( selectionHelper, maybeTakes, field ) maybePromotion maybeEnPassant maybeCheck =
             let
                 extraInfo =
-                    MaybeE.values [ maybeTakes, maybePromotion, maybeEnPassant ]
+                    MaybeE.values [ maybeTakes, maybePromotion, maybeEnPassant, maybeCheck ]
             in
             Moved piece selectionHelper field extraInfo
 
@@ -87,6 +89,15 @@ parser =
             oneOf
                 [ succeed (Just EnPassant)
                     |. keyword "e.p."
+                , succeed Nothing
+                ]
+
+        checkParser =
+            oneOf
+                [ succeed (Just Check)
+                    |. symbol "+"
+                , succeed (Just Checkmate)
+                    |. symbol "#"
                 , succeed Nothing
                 ]
 
@@ -115,6 +126,7 @@ parser =
                 |= selectionHelperToTargetParser
                 |= promotionParser
                 |= enPassantParser
+                |= checkParser
                 |. end
         , backtrackable <|
             succeed Selected
@@ -165,6 +177,16 @@ enPassant =
     List.any ((==) EnPassant)
 
 
+check : List ExtraInfo -> Bool
+check =
+    List.any ((==) Check)
+
+
+checkmate : List ExtraInfo -> Bool
+checkmate =
+    List.any ((==) Checkmate)
+
+
 serialize : InputState -> String
 serialize inputState =
     let
@@ -178,6 +200,16 @@ serialize inputState =
         serializeEnPassant extraInfo =
             if enPassant extraInfo then
                 "e.p."
+
+            else
+                ""
+
+        serializeCheck extraInfo =
+            if check extraInfo then
+                "+"
+
+            else if checkmate extraInfo then
+                "#"
 
             else
                 ""
@@ -205,6 +237,7 @@ serialize inputState =
                 ++ Field.serialize field
                 ++ serializePromotesTo extraInfo
                 ++ serializeEnPassant extraInfo
+                ++ serializeCheck extraInfo
 
         Castled QueenSide ->
             "0-0-0"

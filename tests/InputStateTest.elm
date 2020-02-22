@@ -27,6 +27,8 @@ testCases =
     , ( "Knight selected with file helper", "Na", Selected Knight (WithFile File.a) )
     , ( "Bishop selected with rank helper", "B1", Selected Bishop (WithRank Rank.r1) )
     , ( "King moved", "Ke6", Moved King NoSelectionHelper ( File.e, Rank.r6 ) [] )
+    , ( "Rook moved and checked", "Re6+", Moved Rook NoSelectionHelper ( File.e, Rank.r6 ) [ Check ] )
+    , ( "Rook moved and checkmated", "Re6#", Moved Rook NoSelectionHelper ( File.e, Rank.r6 ) [ Checkmate ] )
     , ( "Rook moved with file helper", "Rae6", Moved Rook (WithFile File.a) ( File.e, Rank.r6 ) [] )
     , ( "Rook moved with rank helper", "R1e6", Moved Rook (WithRank Rank.r1) ( File.e, Rank.r6 ) [] )
     , ( "Queen moved with field helper"
