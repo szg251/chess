@@ -1,12 +1,12 @@
-with import ./pin.nix { };
-mkShell {
-  name = "chess";
-
-  buildInputs = with elmPackages; [
+let nixpkgs = import ./pin.nix { };
+in
+nixpkgs.mkShell {
+  buildInputs = with nixpkgs.elmPackages; [
     elm
     elm-live
     elm-format
     elm-analyse
-    nodePackages_10_x.uglify-js
+    elm-test
+    nixpkgs.nodePackages_10_x.uglify-js
   ];
 }

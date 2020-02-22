@@ -2,7 +2,7 @@
 let
     nixPath = builtins.fetchGit {
         url = https://github.com/NixOs/nixpkgs;
-        rev = "8da81465c19fca393a3b17004c743e4d82a98e4f";
+        rev = "58fb23f72ad916c8bbfa3c3bc2d0c83c9cfcdd16";
     };
 in
 import nixPath { inherit overlays config; }

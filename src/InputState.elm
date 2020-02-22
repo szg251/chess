@@ -50,18 +50,53 @@ serializeSelectionHelper selectionHelper =
 
 type ExtraInfo
     = Takes
-    | PromoteTo Piece
+    | PromotesTo PieceType
+    | EnPassant
 
 
 parser : Parser InputState
 parser =
     let
-        toMoved piece selectionHelper maybeTakes field =
+        toMoved piece ( selectionHelper, maybeTakes, field ) maybePromotion maybeEnPassant =
             let
                 extraInfo =
-                    MaybeE.toList maybeTakes
+                    MaybeE.values [ maybeTakes, maybePromotion, maybeEnPassant ]
             in
             Moved piece selectionHelper field extraInfo
+
+        promotionParser =
+            oneOf
+                [ succeed (Just << PromotesTo)
+                    |. symbol "="
+                    |= Piece.parser
+                , succeed Nothing
+                ]
+
+        takesParser =
+            oneOf
+                [ succeed (Just Takes)
+                    |. symbol "x"
+                , succeed Nothing
+                ]
+
+        enPassantParser =
+            oneOf
+                [ succeed (Just EnPassant)
+                    |. keyword "e.p."
+                , succeed Nothing
+                ]
+
+        selectionHelperToTargetParser =
+            oneOf
+                [ succeed (\x y z -> ( x, y, z ))
+                    |= succeed NoSelectionHelper
+                    |= takesParser
+                    |= backtrackable Field.parser
+                , succeed (\x y z -> ( x, y, z ))
+                    |= selectionHelperParser
+                    |= takesParser
+                    |= Field.parser
+                ]
     in
     oneOf
         [ succeed NotSelected
@@ -69,24 +104,9 @@ parser =
         , backtrackable <|
             succeed toMoved
                 |= Piece.parser
-                |= succeed NoSelectionHelper
-                |= oneOf
-                    [ succeed (Just Takes)
-                        |. symbol "x"
-                    , succeed Nothing
-                    ]
-                |= Field.parser
-                |. end
-        , backtrackable <|
-            succeed toMoved
-                |= Piece.parser
-                |= backtrackable selectionHelperParser
-                |= oneOf
-                    [ succeed (Just Takes)
-                        |. symbol "x"
-                    , succeed Nothing
-                    ]
-                |= Field.parser
+                |= selectionHelperToTargetParser
+                |= promotionParser
+                |= enPassantParser
                 |. end
         , backtrackable <|
             succeed Selected
