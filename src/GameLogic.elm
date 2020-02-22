@@ -68,9 +68,12 @@ nextTurn turn =
             White
 
 
-move : Field -> List ExtraInfo -> GameState -> Piece -> Result String ( Piece, Piece, GameState )
-move targetField extraInfo gameState selected =
+move : Field -> SelectionHelper -> List ExtraInfo -> GameState -> Piece -> Result String ( Piece, Piece, GameState )
+move targetField selectionHelper extraInfo gameState selected =
     let
+        maybePromotesTo =
+            InputState.getPromotesTo extraInfo
+
         otherPieces =
             List.filter (\piece -> piece /= selected) gameState.pieces
 
@@ -96,30 +99,69 @@ move targetField extraInfo gameState selected =
                     not (enPassantTarget == targetField && enPassantActual == otherPiece.field)
 
         remainedPieces =
-            if selected.name == Pawn then
-                List.filter (\x -> simpleFilter x && enPassantFilter x) otherPieces
+            let
+                takenByEnPassant =
+                    if selected.name == Pawn then
+                        List.filter (not << enPassantFilter) otherPieces
+
+                    else
+                        []
+
+                ( remained, taken ) =
+                    List.partition
+                        (\x -> simpleFilter x && not (List.member x takenByEnPassant))
+                        otherPieces
+            in
+            if List.length taken == 0 then
+                if InputState.takes extraInfo || InputState.enPassant extraInfo then
+                    Err "There is no piece to take."
+
+                else
+                    Ok remained
+
+            else if not (InputState.takes extraInfo) then
+                Err "You are taking an enemy piece, try use the x symbol. Ex. Rxe6"
+
+            else if (List.length takenByEnPassant == 0) && InputState.enPassant extraInfo then
+                Err "This is not an en passant take."
+
+            else if selected.name == Pawn && selectionHelper == NoSelectionHelper then
+                Err "When taking an enemy piece with a pawn, you have to specify the file your pawn is on. Ex. bxd5"
 
             else
-                List.filter simpleFilter otherPieces
+                Ok remained
     in
     if isLegalMove otherPieces gameState.enPassantRight targetField selected then
         let
             target =
-                let
-                    promotesTo =
-                        InputState.getPromotesTo extraInfo
-                            |> Maybe.withDefault Queen
-                in
                 case selected.name of
                     Pawn ->
-                        if (Tuple.second >> Rank.toInt) targetField < 8 then
-                            { selected | field = targetField }
+                        if
+                            (selected.color == White && (Tuple.second >> Rank.toInt) targetField == 8)
+                                || (selected.color == Black && (Tuple.second >> Rank.toInt) targetField == 1)
+                        then
+                            case maybePromotesTo of
+                                Just promotesTo ->
+                                    Ok { selected | name = promotesTo, field = targetField }
+
+                                Nothing ->
+                                    Err "Your pawn needs to promote. Use the = symbol to specify a piece type. Ex. e8=Q"
 
                         else
-                            { selected | name = promotesTo, field = targetField }
+                            case maybePromotesTo of
+                                Nothing ->
+                                    Ok { selected | field = targetField }
+
+                                Just _ ->
+                                    Err "Only pawns on last rank can promote."
 
                     _ ->
-                        { selected | field = targetField }
+                        case maybePromotesTo of
+                            Nothing ->
+                                Ok { selected | field = targetField }
+
+                            Just _ ->
+                                Err "Only pawns can promote."
 
             nextCastlingRight =
                 let
@@ -218,16 +260,20 @@ move targetField extraInfo gameState selected =
                         else
                             { enPassantRight | black = Nothing, white = Nothing }
         in
-        Ok
-            ( target
-            , selected
-            , { gameState
-                | pieces = target :: remainedPieces
-                , enPassantRight = nextEnPassantRight
-                , castlingRight = nextCastlingRight
-                , turn = nextTurn gameState.turn
-              }
+        Result.map2
+            (\validTarget validRemainedPieces ->
+                ( validTarget
+                , selected
+                , { gameState
+                    | pieces = validTarget :: validRemainedPieces
+                    , enPassantRight = nextEnPassantRight
+                    , castlingRight = nextCastlingRight
+                    , turn = nextTurn gameState.turn
+                  }
+                )
             )
+            target
+            remainedPieces
 
     else
         Err "This move is not possible."
@@ -344,11 +390,11 @@ castle side gameState =
 evalInputState : InputState -> GameState -> Result String ( Piece, Piece, GameState )
 evalInputState inputState gameState =
     case inputState of
-        Moved _ _ field extraInfo ->
+        Moved _ selectionHelper field extraInfo ->
             let
                 attempts =
                     getSelectedPieces inputState gameState.turn gameState.pieces
-                        |> List.map (move field extraInfo gameState)
+                        |> List.map (move field selectionHelper extraInfo gameState)
                         |> ResultE.partition
             in
             case attempts of

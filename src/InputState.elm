@@ -154,18 +154,28 @@ getPromotesTo extraInfo =
             Nothing
 
 
+takes : List ExtraInfo -> Bool
+takes =
+    List.any ((==) Takes)
+
+
+enPassant : List ExtraInfo -> Bool
+enPassant =
+    List.any ((==) EnPassant)
+
+
 serialize : InputState -> String
 serialize inputState =
     let
         serializeTakes extraInfo =
-            if List.any ((==) Takes) extraInfo then
+            if takes extraInfo then
                 "x"
 
             else
                 ""
 
         serializeEnPassant extraInfo =
-            if List.any ((==) EnPassant) extraInfo then
+            if enPassant extraInfo then
                 "e.p."
 
             else
