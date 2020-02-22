@@ -2,6 +2,7 @@ module InputState exposing (..)
 
 import Field exposing (Field)
 import File exposing (File)
+import List.Extra as ListE
 import Maybe.Extra as MaybeE
 import Parser exposing ((|.), (|=), Parser, backtrackable, end, keyword, oneOf, succeed, symbol)
 import Piece exposing (Color(..), Piece, PieceType(..))
@@ -128,17 +129,55 @@ parser =
 
 serialize : InputState -> String
 serialize inputState =
+    let
+        serializeTakes extraInfo =
+            if List.any ((==) Takes) extraInfo then
+                "x"
+
+            else
+                ""
+
+        serializeEnPassant extraInfo =
+            if List.any ((==) EnPassant) extraInfo then
+                "e.p."
+
+            else
+                ""
+
+        serializePromotesTo extraInfo =
+            case
+                ListE.find
+                    (\info ->
+                        case info of
+                            PromotesTo _ ->
+                                True
+
+                            _ ->
+                                False
+                    )
+                    extraInfo
+            of
+                Just (PromotesTo pieceType) ->
+                    "=" ++ Piece.serialize pieceType
+
+                _ ->
+                    ""
+    in
     case inputState of
         NotSelected ->
             ""
 
         Selected pieceType selectionHelper ->
             Piece.serialize pieceType
+                ++ serializeSelectionHelper selectionHelper
 
-        Moved pieceType selectionHelper field _ ->
+        Moved pieceType selectionHelper field extraInfo ->
             Piece.serialize pieceType
                 ++ serializeSelectionHelper selectionHelper
+                ++ serializeTakes extraInfo
                 ++ Field.serialize field
+                ++ serializePromotesTo extraInfo
+                ++ serializeEnPassant extraInfo
 
         Castled QueenSide ->
             "0-0-0"

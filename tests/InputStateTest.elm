@@ -39,9 +39,17 @@ testCases =
 
 suite : Test
 suite =
-    describe "InputState parser" <|
-        List.map
-            (\( name, input, expected ) ->
-                test name (\_ -> Expect.equal (Parser.run InputState.parser input) (Ok expected))
-            )
-            testCases
+    describe "InputState"
+        [ describe "parser" <|
+            List.map
+                (\( name, string, inputState ) ->
+                    test name (\_ -> Expect.equal (Parser.run InputState.parser string) (Ok inputState))
+                )
+                testCases
+        , describe "serialize" <|
+            List.map
+                (\( name, string, inputState ) ->
+                    test name (\_ -> Expect.equal (InputState.serialize inputState) string)
+                )
+                testCases
+        ]
