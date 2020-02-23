@@ -4,13 +4,14 @@ import Browser
 import Browser.Dom as Dom exposing (Viewport)
 import Browser.Events
 import Data.Board as Board
+import Data.Field exposing (Field)
 import Data.Piece exposing (Color(..), Piece, PieceType(..))
 import File exposing (File)
 import File.Download as Download
 import File.Select as Select
 import GameLogic exposing (GameState)
 import History
-import Html exposing (Html, a, br, button, div, form, input, label, strong, text)
+import Html exposing (Attribute, Html, a, br, button, div, form, input, label, strong, text)
 import Html.Attributes exposing (checked, disabled, for, href, id, style, target, type_, value)
 import Html.Events exposing (onClick, onInput, onSubmit)
 import InputState exposing (InputState(..))
@@ -22,11 +23,13 @@ import Task
 type alias Model =
     { gameState : GameState
     , rotateOnTurn : Bool
-    , showTouchKeyboard : Bool
+    , isTouchMode : Bool
     , input : String
     , inputState : InputState
+    , selectedFields : List Field
     , error : Maybe String
     , boardSize : Int
+    , isMobile : Bool
     }
 
 
@@ -34,11 +37,13 @@ init : () -> ( Model, Cmd Msg )
 init _ =
     ( { gameState = GameLogic.init
       , rotateOnTurn = True
-      , showTouchKeyboard = False
+      , isTouchMode = False
       , input = ""
       , inputState = NotSelected
+      , selectedFields = []
       , error = Nothing
       , boardSize = 700
+      , isMobile = False
       }
     , Cmd.batch
         [ Task.attempt (\_ -> NoOp) (Dom.focus "input-bar")
@@ -69,16 +74,44 @@ update msg model =
             ( model, Cmd.none )
 
         Resized width height ->
-            ( { model | boardSize = min width height }, Cmd.none )
+            let
+                isMobile =
+                    width < 900
+            in
+            ( { model
+                | boardSize =
+                    if isMobile then
+                        min width height
+
+                    else
+                        600
+                , isMobile = isMobile
+              }
+            , Cmd.none
+            )
 
         GotViewport { viewport } ->
-            ( { model | boardSize = min viewport.width viewport.height |> round }, Cmd.none )
+            let
+                isMobile =
+                    viewport.width < 900
+            in
+            ( { model
+                | boardSize =
+                    if isMobile then
+                        min viewport.width viewport.height |> round
+
+                    else
+                        600
+                , isMobile = isMobile
+              }
+            , Cmd.none
+            )
 
         RotateOnTurnClicked ->
             ( { model | rotateOnTurn = not model.rotateOnTurn }, Cmd.none )
 
         ShowTouchKeyboardClicked ->
-            ( { model | showTouchKeyboard = not model.showTouchKeyboard }, Cmd.none )
+            ( { model | isTouchMode = not model.isTouchMode }, Cmd.none )
 
         Restart ->
             ( { model
@@ -96,10 +129,16 @@ update msg model =
                     str
                         |> Parser.run InputState.parser
                         |> Result.withDefault NotSelected
+
+                ( selectedFields, error ) =
+                    GameLogic.getSelectedFields inputState model.gameState
+                        |> (\result -> ( Result.withDefault [] result, ResultE.error result ))
             in
             ( { model
                 | input = str
                 , inputState = inputState
+                , selectedFields = selectedFields
+                , error = error
               }
             , Cmd.none
             )
@@ -117,13 +156,7 @@ update msg model =
                     )
 
                 Err err ->
-                    ( { model
-                        | error = Just err
-                        , input = ""
-                        , inputState = NotSelected
-                      }
-                    , Cmd.none
-                    )
+                    ( { model | error = Just err }, Cmd.none )
 
         SaveButtonClicked ->
             ( model, Download.string "chess.txt" "text/plain" (History.serialize model.gameState.history) )
@@ -135,7 +168,7 @@ update msg model =
             ( model, Task.perform FileLoaded (File.toString file) )
 
         FileLoaded file ->
-            case Parser.run History.parser file |> Debug.log "parsed" of
+            case Parser.run History.parser file of
                 Ok history ->
                     case GameLogic.loadHistory history of
                         Ok gameState ->
@@ -163,25 +196,41 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
-    let
-        ( selectedFields, error ) =
-            GameLogic.getSelectedFields model.inputState model.gameState
-                |> (\result -> ( Result.withDefault [] result, ResultE.error result ))
-    in
     div []
         [ div [ style "display" "flex", style "flex-wrap" "wrap" ]
             [ Board.view
-                (if model.rotateOnTurn && model.gameState.turn == Black then
-                    180
+                { rotation =
+                    if model.rotateOnTurn && model.gameState.turn == Black then
+                        180
 
-                 else
-                    0
-                )
-                model.boardSize
-                selectedFields
-                model.gameState.pieces
-            , div []
-                [ div []
+                    else
+                        0
+                , boardSize = model.boardSize
+                , selected = model.selectedFields
+                , pieces = model.gameState.pieces
+                , isTouchMode = model.isTouchMode
+                , input = model.input
+                , error = model.error
+                }
+            , div
+                [ if model.isMobile then
+                    style "width" "100%"
+
+                  else
+                    style "width" "calc(100% - 600px)"
+                ]
+                [ if model.isTouchMode then
+                    div []
+                        [ viewTouchKeyboard model.input
+                        , strong [] [ text <| Maybe.withDefault "" model.error ]
+                        ]
+
+                  else
+                    form [ onSubmit Move ]
+                        [ input [ id "input-bar", onInput Input, value model.input ] []
+                        , strong [] [ text <| Maybe.withDefault "" model.error ]
+                        ]
+                , div []
                     [ text "The pieces are controlled by "
                     , a
                         [ href "https://www.cheatography.com/davechild/cheat-sheets/chess-algebraic-notation/"
@@ -189,10 +238,6 @@ view model =
                         ]
                         [ text "algebraic notation" ]
                     , text " like Nc3"
-                    ]
-                , form [ onSubmit Move ]
-                    [ input [ id "input-bar", onInput Input, value model.input ] []
-                    , strong [] [ text <| Maybe.withDefault "" error ]
                     ]
                 , input
                     [ id "is-rotating"
@@ -205,7 +250,7 @@ view model =
                 , input
                     [ id "show-touch-keyboard"
                     , type_ "checkbox"
-                    , checked model.showTouchKeyboard
+                    , checked model.isTouchMode
                     , onClick ShowTouchKeyboardClicked
                     ]
                     []
@@ -215,49 +260,50 @@ view model =
                     , button [ onClick SaveButtonClicked ] [ text "Save to file" ]
                     , button [ onClick LoadButtonClicked ] [ text "Load from file" ]
                     ]
-                , if model.showTouchKeyboard then
-                    viewTouchKeyboard model.input
-
-                  else
-                    text ""
                 , History.view model.gameState.history
                 ]
             ]
         ]
 
 
-viewTouchKey : String -> String -> Html Msg
-viewTouchKey prevString buttonValue =
+viewTouchKey : List (Attribute Msg) -> String -> Msg -> Html Msg
+viewTouchKey attrs label msg =
+    let
+        width =
+            if String.length label > 2 then
+                "25%"
+
+            else
+                "12.5%"
+    in
     button
-        [ style "width" "100px"
-        , style "height" "100px"
-        , style "font-size" "25px"
-        , onClick (Input (prevString ++ buttonValue))
-        ]
-        [ text buttonValue ]
+        ([ style "width" width
+         , style "height" "50px"
+         , style "font-size" "25px"
+         , style "text-align" "center"
+         , onClick msg
+         ]
+            ++ attrs
+        )
+        [ text label ]
 
 
 viewTouchKeyboard : String -> Html Msg
 viewTouchKeyboard prevString =
-    div []
-        [ div [] (List.map (viewTouchKey prevString) [ "R", "N", "B", "Q", "K" ])
-        , div [] (List.map (viewTouchKey prevString) [ "a", "b", "c", "d", "e", "f", "g", "h" ])
-        , div [] (List.map (viewTouchKey prevString) [ "1", "2", "3", "4", "5", "6", "7", "8" ])
-        , div [] (List.map (viewTouchKey prevString) [ "x", "0-0", "0-0-0", "e.p." ])
-        , button
-            [ style "width" "100px"
-            , style "height" "100px"
-            , style "font-size" "25px"
-            , onClick Move
-            ]
-            [ text "enter" ]
-        , button
-            [ style "width" "100px"
-            , style "height" "100px"
-            , style "font-size" "25px"
-            , onClick (Input "")
-            ]
-            [ text "clear" ]
+    let
+        duplicate fn val =
+            fn val val
+
+        viewCharKey key =
+            viewTouchKey [] key (Input (prevString ++ key))
+    in
+    div [ style "width" "100%" ]
+        [ div [] (List.map viewCharKey [ "R", "N", "B", "Q", "K" ])
+        , div [] (List.map viewCharKey [ "a", "b", "c", "d", "e", "f", "g", "h" ])
+        , div [] (List.map viewCharKey [ "1", "2", "3", "4", "5", "6", "7", "8" ])
+        , div [] (List.map viewCharKey [ "x", "0-0", "0-0-0", "=", "e.p." ])
+        , viewTouchKey [] "⌫" (Input (String.dropRight 1 prevString))
+        , viewTouchKey [ style "margin-left" "75%" ] "⏎ " Move
         ]
 
 

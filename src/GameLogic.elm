@@ -121,7 +121,7 @@ move targetField selectionHelper extraInfo gameState selected =
                     Ok remained
 
             else if not (InputState.takes extraInfo) then
-                Err "You are taking an enemy piece, try use the x symbol. Ex. Rxe6"
+                Err "You are taking an enemy piece, try using the x symbol. Ex. Rxe6"
 
             else if (List.length takenByEnPassant == 0) && InputState.enPassant extraInfo then
                 Err "This is not an en passant take."

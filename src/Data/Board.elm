@@ -4,8 +4,8 @@ import Data.Field as Field exposing (Field)
 import Data.File as File
 import Data.Piece as Piece exposing (Color(..), Piece, PieceType(..))
 import Data.Rank as Rank
-import Svg exposing (Svg, g, svg)
-import Svg.Attributes exposing (height, style, viewBox, width)
+import Svg exposing (Svg, g, rect, svg, text, text_)
+import Svg.Attributes exposing (dominantBaseline, fill, height, opacity, style, textAnchor, viewBox, width, x, y)
 
 
 cartesianProduct : List a -> List b -> (a -> b -> c) -> List c
@@ -50,8 +50,19 @@ initPieces =
     ]
 
 
-view : Int -> Int -> List Field -> List Piece -> Svg msg
-view rotation boardSize selected pieces =
+type alias Props =
+    { rotation : Int
+    , boardSize : Int
+    , selected : List Field
+    , pieces : List Piece
+    , isTouchMode : Bool
+    , input : String
+    , error : Maybe String
+    }
+
+
+view : Props -> Svg msg
+view { rotation, boardSize, selected, pieces, isTouchMode, input, error } =
     let
         size =
             Field.fieldSize * 8 + 2
@@ -64,7 +75,7 @@ view rotation boardSize selected pieces =
         , width <| String.fromInt boardSize
         , height <| String.fromInt boardSize
         ]
-        [ g
+        ([ g
             [ style <|
                 "transition: all 1s ease-out;transform-origin:center;transform: rotate("
                     ++ String.fromInt rotation
@@ -76,4 +87,35 @@ view rotation boardSize selected pieces =
                 (Field.view selected)
                 ++ List.map (Piece.view rotation) pieces
             )
-        ]
+         ]
+            ++ (if isTouchMode then
+                    [ text_
+                        [ x "50%"
+                        , y "50%"
+                        , dominantBaseline "middle"
+                        , textAnchor "middle"
+                        , style "font: bold 80px sans-serif; fill: #f7b360"
+                        ]
+                        [ text input ]
+                    ]
+                        ++ (case error of
+                                Nothing ->
+                                    []
+
+                                Just errText ->
+                                    [ rect [ y "90%", width "100%", height "10%", opacity "0.8", fill "white" ] []
+                                    , text_
+                                        [ x "50%"
+                                        , y "95%"
+                                        , dominantBaseline "middle"
+                                        , textAnchor "middle"
+                                        , style "font: bold 13px sans-serif; fill: red"
+                                        ]
+                                        [ text <| Maybe.withDefault "" error ]
+                                    ]
+                           )
+
+                else
+                    []
+               )
+        )
