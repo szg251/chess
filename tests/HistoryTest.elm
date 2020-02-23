@@ -49,4 +49,17 @@ suite =
                     ]
             in
             \_ -> Expect.equal (Parser.run History.parser testFile) (Ok expected)
+        , test "parse file without line breaks" <|
+            let
+                testFile =
+                    "1. f4 d5 2. Nf3 c5"
+
+                expected =
+                    [ Moved Pawn NoSelectionHelper ( File.c, Rank.r5 ) []
+                    , Moved Knight NoSelectionHelper ( File.f, Rank.r3 ) []
+                    , Moved Pawn NoSelectionHelper ( File.d, Rank.r5 ) []
+                    , Moved Pawn NoSelectionHelper ( File.f, Rank.r4 ) []
+                    ]
+            in
+            \_ -> Expect.equal (Parser.run History.parser testFile) (Ok expected)
         ]

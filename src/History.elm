@@ -83,7 +83,7 @@ historyLineParser prevMoves =
             |. spaces
             |= InputState.parser
             |= oneOf
-                [ Parser.map (always Loop) (symbol "\n")
+                [ Parser.map (always Loop) (oneOf [ symbol "\n", symbol " " ])
                 , Parser.map (always Done) end
                 ]
         ]
