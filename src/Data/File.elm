@@ -1,4 +1,4 @@
-module File exposing (File, a, b, c, d, e, f, fromChar, fromInt, g, h, parser, serialize, toChar, toInt)
+module Data.File exposing (File, a, b, c, d, e, f, fromChar, fromInt, g, h, parser, serialize, toChar, toInt)
 
 import Parser exposing ((|.), Parser, oneOf, succeed, symbol)
 

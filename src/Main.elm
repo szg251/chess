@@ -1,15 +1,15 @@
 module Main exposing (main)
 
-import Board
 import Browser
 import Browser.Dom as Dom
+import Data.Board as Board
+import Data.Piece exposing (Color(..), Piece, PieceType(..))
 import GameLogic exposing (GameState)
 import Html exposing (Html, a, br, button, div, form, input, label, li, ol, strong, text, textarea)
 import Html.Attributes exposing (checked, disabled, for, href, id, target, type_, value)
 import Html.Events exposing (onClick, onInput, onSubmit)
 import InputState exposing (InputState(..))
 import Parser
-import Piece exposing (Color(..), Piece, PieceType(..))
 import Result.Extra as ResultE
 import Task
 

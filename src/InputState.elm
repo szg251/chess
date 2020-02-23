@@ -1,12 +1,12 @@
 module InputState exposing (..)
 
-import Field exposing (Field)
-import File exposing (File)
+import Data.Field as Field exposing (Field)
+import Data.File as File exposing (File)
+import Data.Piece as Piece exposing (Color(..), Piece, PieceType(..))
+import Data.Rank as Rank exposing (Rank)
 import List.Extra as ListE
 import Maybe.Extra as MaybeE
 import Parser exposing ((|.), (|=), Parser, backtrackable, end, keyword, oneOf, succeed, symbol)
-import Piece exposing (Color(..), Piece, PieceType(..))
-import Rank exposing (Rank)
 
 
 type InputState

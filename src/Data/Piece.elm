@@ -1,7 +1,8 @@
-module Piece exposing (Color(..), Field, Piece, PieceType(..), parser, serialize, view)
+module Data.Piece exposing (Color(..), Field, Piece, PieceType(..), parser, serialize, view)
 
-import Field exposing (fileToX, rankToY)
-import File exposing (File)
+import Data.Field exposing (fileToX, rankToY)
+import Data.File exposing (File)
+import Data.Rank exposing (Rank)
 import Icons.Bishop
 import Icons.King
 import Icons.Knight
@@ -9,7 +10,6 @@ import Icons.Pawn
 import Icons.Queen
 import Icons.Rook
 import Parser exposing ((|.), Parser, oneOf, succeed, symbol)
-import Rank exposing (Rank)
 import Svg exposing (Svg)
 
 

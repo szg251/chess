@@ -1,9 +1,9 @@
-module Board exposing (initPieces, view)
+module Data.Board exposing (initPieces, view)
 
-import Field exposing (Field)
-import File
-import Piece exposing (Color(..), Piece, PieceType(..))
-import Rank
+import Data.Field as Field exposing (Field)
+import Data.File as File
+import Data.Piece as Piece exposing (Color(..), Piece, PieceType(..))
+import Data.Rank as Rank
 import Svg exposing (Svg, g, svg)
 import Svg.Attributes exposing (height, style, viewBox, width)
 

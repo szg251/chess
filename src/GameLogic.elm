@@ -1,11 +1,11 @@
 module GameLogic exposing (..)
 
-import Board
-import Field exposing (Field)
-import File exposing (File)
+import Data.Board as Board
+import Data.Field exposing (Field)
+import Data.File as File exposing (File)
+import Data.Piece exposing (Color(..), Piece, PieceType(..))
+import Data.Rank as Rank exposing (Rank)
 import InputState exposing (ExtraInfo(..), InputState(..), SelectionHelper(..), Side(..))
-import Piece exposing (Color(..), Piece, PieceType(..))
-import Rank exposing (Rank)
 import Result.Extra as ResultE
 
 

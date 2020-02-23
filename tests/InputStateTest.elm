@@ -1,11 +1,11 @@
 module InputStateTest exposing (..)
 
+import Data.File as File
+import Data.Piece exposing (PieceType(..))
+import Data.Rank as Rank
 import Expect exposing (Expectation)
-import File
 import InputState exposing (ExtraInfo(..), InputState(..), SelectionHelper(..), Side(..))
 import Parser
-import Piece exposing (PieceType(..))
-import Rank
 import Test exposing (..)
 
 

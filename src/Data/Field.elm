@@ -1,8 +1,8 @@
-module Field exposing (Field, fieldSize, fileToX, parser, rankToY, serialize, view)
+module Data.Field exposing (Field, fieldSize, fileToX, parser, rankToY, serialize, view)
 
-import File exposing (File)
+import Data.File as File exposing (File)
+import Data.Rank as Rank exposing (Rank)
 import Parser exposing ((|=), Parser, succeed)
-import Rank exposing (Rank)
 import Svg exposing (Svg, rect)
 import Svg.Attributes exposing (fill, height, stroke, strokeWidth, width, x, y)
 
