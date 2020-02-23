@@ -4,8 +4,12 @@ import Browser
 import Browser.Dom as Dom
 import Data.Board as Board
 import Data.Piece exposing (Color(..), Piece, PieceType(..))
+import File exposing (File)
+import File.Download as Download
+import File.Select as Select
 import GameLogic exposing (GameState)
-import Html exposing (Html, a, br, button, div, form, input, label, li, ol, strong, text, textarea)
+import History
+import Html exposing (Html, a, br, button, div, form, input, label, strong, text)
 import Html.Attributes exposing (checked, disabled, for, href, id, target, type_, value)
 import Html.Events exposing (onClick, onInput, onSubmit)
 import InputState exposing (InputState(..))
@@ -41,6 +45,10 @@ type Msg
     | Move
     | RotateOnTurnClicked
     | Restart
+    | LoadButtonClicked
+    | SaveButtonClicked
+    | FileSelected File
+    | FileLoaded String
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -77,8 +85,8 @@ update msg model =
             )
 
         Move ->
-            case GameLogic.evalInputState model.inputState model.gameState of
-                Ok ( _, _, gameState ) ->
+            case GameLogic.getNextGameState model.inputState model.gameState of
+                Ok gameState ->
                     ( { model
                         | input = ""
                         , inputState = NotSelected
@@ -96,6 +104,41 @@ update msg model =
                       }
                     , Cmd.none
                     )
+
+        SaveButtonClicked ->
+            ( model, Download.string "chess.txt" "text/plain" (History.serialize model.gameState.history) )
+
+        LoadButtonClicked ->
+            ( model, Select.file [ "text/plain" ] FileSelected )
+
+        FileSelected file ->
+            ( model, Task.perform FileLoaded (File.toString file) )
+
+        FileLoaded file ->
+            case Parser.run History.parser file |> Debug.log "parsed" of
+                Ok history ->
+                    case GameLogic.loadHistory history of
+                        Ok gameState ->
+                            ( { model
+                                | input = ""
+                                , inputState = NotSelected
+                                , gameState = gameState
+                                , error = Nothing
+                              }
+                            , Cmd.none
+                            )
+
+                        Err err ->
+                            ( { model
+                                | error = Just err
+                                , input = ""
+                                , inputState = NotSelected
+                              }
+                            , Cmd.none
+                            )
+
+                Err err ->
+                    ( { model | error = Just "Couldn't parse file" }, Cmd.none )
 
 
 view : Model -> Html Msg
@@ -139,26 +182,10 @@ view model =
             [ input [ id "input-bar", onInput Input, value model.input ] []
             ]
         , strong [] [ text <| Maybe.withDefault "" error ]
-        , viewHistory model.gameState.history
+        , button [ onClick SaveButtonClicked ] [ text "Save to file" ]
+        , button [ onClick LoadButtonClicked ] [ text "Load from file" ]
+        , History.view model.gameState.history
         ]
-
-
-viewHistory : List String -> Html Msg
-viewHistory history =
-    let
-        groupMoves moves =
-            case moves of
-                whiteMove :: blackMove :: rest ->
-                    (whiteMove ++ " " ++ blackMove) :: groupMoves rest
-
-                lastMove ->
-                    lastMove
-    in
-    ol
-        []
-        (groupMoves history
-            |> List.map (li [] << List.singleton << text)
-        )
 
 
 subscriptions : Model -> Sub Msg

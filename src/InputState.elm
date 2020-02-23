@@ -6,7 +6,20 @@ import Data.Piece as Piece exposing (Color(..), Piece, PieceType(..))
 import Data.Rank as Rank exposing (Rank)
 import List.Extra as ListE
 import Maybe.Extra as MaybeE
-import Parser exposing ((|.), (|=), Parser, backtrackable, end, keyword, oneOf, succeed, symbol)
+import Parser
+    exposing
+        ( (|.)
+        , (|=)
+        , Parser
+        , backtrackable
+        , chompIf
+        , end
+        , keyword
+        , oneOf
+        , spaces
+        , succeed
+        , symbol
+        )
 
 
 type InputState
@@ -101,6 +114,25 @@ parser =
                 , succeed Nothing
                 ]
 
+        inputStateEnd =
+            oneOf
+                [ Parser.map (always True)
+                    (backtrackable
+                        (chompIf
+                            (\char -> char /= ' ' && char /= '\n')
+                        )
+                    )
+                , succeed False
+                ]
+                |> Parser.andThen checkEnding
+
+        checkEnding isBadEnding =
+            if isBadEnding then
+                Parser.problem "Unexpected ending"
+
+            else
+                Parser.commit ()
+
         selectionHelperToTargetParser =
             oneOf
                 [ succeed (\x y z -> ( x, y, z ))
@@ -119,7 +151,7 @@ parser =
     in
     oneOf
         [ succeed NotSelected
-            |. end
+            |. inputStateEnd
         , backtrackable <|
             succeed toMoved
                 |= Piece.parser
@@ -127,22 +159,22 @@ parser =
                 |= promotionParser
                 |= enPassantParser
                 |= checkParser
-                |. end
+                |. inputStateEnd
         , backtrackable <|
             succeed Selected
                 |= Piece.parser
                 |= succeed NoSelectionHelper
-                |. end
+                |. inputStateEnd
         , succeed Selected
             |= Piece.parser
             |= selectionHelperParser
-            |. end
+            |. inputStateEnd
         , succeed (Castled QueenSide)
             |. keyword "0-0-0"
-            |. end
+            |. inputStateEnd
         , succeed (Castled KingSide)
             |. keyword "0-0"
-            |. end
+            |. inputStateEnd
         ]
 
 

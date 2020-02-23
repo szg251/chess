@@ -5,6 +5,7 @@ import Data.Field exposing (Field)
 import Data.File as File exposing (File)
 import Data.Piece exposing (Color(..), Piece, PieceType(..))
 import Data.Rank as Rank exposing (Rank)
+import History exposing (History)
 import InputState exposing (ExtraInfo(..), InputState(..), SelectionHelper(..), Side(..))
 import Result.Extra as ResultE
 
@@ -14,7 +15,7 @@ type alias GameState =
     , turn : Color
     , enPassantRight : EnPassantRight
     , castlingRight : CastlingRight
-    , history : List String
+    , history : History
     }
 
 
@@ -403,7 +404,7 @@ evalInputState inputState gameState =
                         ( target
                         , source
                         , { nextGameState
-                            | history = nextGameState.history ++ [ InputState.serialize inputState ]
+                            | history = inputState :: nextGameState.history
                           }
                         )
 
@@ -418,6 +419,11 @@ evalInputState inputState gameState =
 
         _ ->
             Err "Invalid input state"
+
+
+getNextGameState : InputState -> GameState -> Result String GameState
+getNextGameState inputState gameState =
+    Result.map (\( _, _, nextGameState ) -> nextGameState) (evalInputState inputState gameState)
 
 
 getSelectedPieces : InputState -> Color -> List Piece -> List Piece
@@ -660,3 +666,11 @@ isLegalMove otherPieces enPassantRight ( nextFile, nextRank ) piece =
                     otherPieces
     in
     legalMove && noBlockingPiece && notTakesOwnPiece
+
+
+loadHistory : History -> Result String GameState
+loadHistory history =
+    List.foldr
+        (\inputState gameState -> Result.andThen (getNextGameState inputState) gameState)
+        (Ok init)
+        history
