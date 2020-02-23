@@ -1,6 +1,5 @@
 module GameLogic exposing (..)
 
-import Data.Board as Board
 import Data.Field exposing (Field)
 import Data.File as File exposing (File)
 import Data.Piece exposing (Color(..), Piece, PieceType(..))
@@ -8,6 +7,7 @@ import Data.Rank as Rank exposing (Rank)
 import History exposing (History)
 import InputState exposing (ExtraInfo(..), InputState(..), SelectionHelper(..), Side(..))
 import Result.Extra as ResultE
+import View.Board as Board
 
 
 type alias GameState =
@@ -21,7 +21,7 @@ type alias GameState =
 
 init : GameState
 init =
-    { pieces = Board.initPieces
+    { pieces = initPieces
     , turn = White
     , enPassantRight =
         { black = Nothing
@@ -39,6 +39,43 @@ init =
         }
     , history = []
     }
+
+
+initPieces : List Piece
+initPieces =
+    [ Piece Pawn Black ( File.a, Rank.r7 )
+    , Piece Pawn Black ( File.b, Rank.r7 )
+    , Piece Pawn Black ( File.c, Rank.r7 )
+    , Piece Pawn Black ( File.d, Rank.r7 )
+    , Piece Pawn Black ( File.e, Rank.r7 )
+    , Piece Pawn Black ( File.f, Rank.r7 )
+    , Piece Pawn Black ( File.g, Rank.r7 )
+    , Piece Pawn Black ( File.h, Rank.r7 )
+    , Piece Rook Black ( File.a, Rank.r8 )
+    , Piece Knight Black ( File.b, Rank.r8 )
+    , Piece Bishop Black ( File.c, Rank.r8 )
+    , Piece Queen Black ( File.d, Rank.r8 )
+    , Piece King Black ( File.e, Rank.r8 )
+    , Piece Bishop Black ( File.f, Rank.r8 )
+    , Piece Knight Black ( File.g, Rank.r8 )
+    , Piece Rook Black ( File.h, Rank.r8 )
+    , Piece Pawn White ( File.a, Rank.r2 )
+    , Piece Pawn White ( File.b, Rank.r2 )
+    , Piece Pawn White ( File.c, Rank.r2 )
+    , Piece Pawn White ( File.d, Rank.r2 )
+    , Piece Pawn White ( File.e, Rank.r2 )
+    , Piece Pawn White ( File.f, Rank.r2 )
+    , Piece Pawn White ( File.g, Rank.r2 )
+    , Piece Pawn White ( File.h, Rank.r2 )
+    , Piece Rook White ( File.a, Rank.r1 )
+    , Piece Knight White ( File.b, Rank.r1 )
+    , Piece Bishop White ( File.c, Rank.r1 )
+    , Piece Queen White ( File.d, Rank.r1 )
+    , Piece King White ( File.e, Rank.r1 )
+    , Piece Bishop White ( File.f, Rank.r1 )
+    , Piece Knight White ( File.g, Rank.r1 )
+    , Piece Rook White ( File.h, Rank.r1 )
+    ]
 
 
 type alias EnPassantRight =
@@ -121,13 +158,13 @@ move targetField selectionHelper extraInfo gameState selected =
                     Ok remained
 
             else if not (InputState.takes extraInfo) then
-                Err "You are taking an enemy piece, try using the x symbol. Ex. Rxe6"
+                Err "When you are taking an enemy piece, you need to use the x symbol. Ex.: Rxe6"
 
             else if (List.length takenByEnPassant == 0) && InputState.enPassant extraInfo then
                 Err "This is not an en passant take."
 
             else if selected.name == Pawn && selectionHelper == NoSelectionHelper then
-                Err "When taking an enemy piece with a pawn, you have to specify the file your pawn is on. Ex. bxd5"
+                Err "When taking an enemy piece with a pawn, you have to specify the file your pawn is on. Ex.: bxd5"
 
             else
                 Ok remained
@@ -146,7 +183,7 @@ move targetField selectionHelper extraInfo gameState selected =
                                     Ok { selected | name = promotesTo, field = targetField }
 
                                 Nothing ->
-                                    Err "Your pawn needs to promote. Use the = symbol to specify a piece type. Ex. e8=Q"
+                                    Err "Your pawn needs to promote. Use the = symbol to specify a piece type. Ex.: e8=Q"
 
                         else
                             case maybePromotesTo of
@@ -154,7 +191,7 @@ move targetField selectionHelper extraInfo gameState selected =
                                     Ok { selected | field = targetField }
 
                                 Just _ ->
-                                    Err "Only pawns on last rank can promote."
+                                    Err "Only passed pawns on the last rank can promote."
 
                     _ ->
                         case maybePromotesTo of
@@ -412,7 +449,7 @@ evalInputState inputState gameState =
                     Err err
 
                 _ ->
-                    Err "Multiple possible moves. Try to specify which file or rank your piece is on. Ex. Rd5 -> Rad5"
+                    Err "Multiple possible moves. Try to specify which file or rank your piece is on. Ex.: Rad5"
 
         Castled side ->
             case castle side gameState of

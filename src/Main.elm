@@ -3,7 +3,6 @@ module Main exposing (main)
 import Browser
 import Browser.Dom as Dom exposing (Viewport)
 import Browser.Events
-import Data.Board as Board
 import Data.Field exposing (Field)
 import Data.Piece exposing (Color(..), Piece, PieceType(..))
 import File exposing (File)
@@ -18,6 +17,7 @@ import InputState exposing (InputState(..))
 import Parser
 import Result.Extra as ResultE
 import Task
+import View.Board as Board
 
 
 type alias Model =

@@ -1,4 +1,4 @@
-module Data.Board exposing (initPieces, view)
+module View.Board exposing (view)
 
 import Data.Field as Field exposing (Field)
 import Data.File as File
@@ -11,43 +11,6 @@ import Svg.Attributes exposing (dominantBaseline, fill, height, opacity, style, 
 cartesianProduct : List a -> List b -> (a -> b -> c) -> List c
 cartesianProduct xs ys combine =
     List.concatMap (\x -> List.map (\y -> combine x y) ys) xs
-
-
-initPieces : List Piece
-initPieces =
-    [ Piece Pawn Black ( File.a, Rank.r7 )
-    , Piece Pawn Black ( File.b, Rank.r7 )
-    , Piece Pawn Black ( File.c, Rank.r7 )
-    , Piece Pawn Black ( File.d, Rank.r7 )
-    , Piece Pawn Black ( File.e, Rank.r7 )
-    , Piece Pawn Black ( File.f, Rank.r7 )
-    , Piece Pawn Black ( File.g, Rank.r7 )
-    , Piece Pawn Black ( File.h, Rank.r7 )
-    , Piece Rook Black ( File.a, Rank.r8 )
-    , Piece Knight Black ( File.b, Rank.r8 )
-    , Piece Bishop Black ( File.c, Rank.r8 )
-    , Piece Queen Black ( File.d, Rank.r8 )
-    , Piece King Black ( File.e, Rank.r8 )
-    , Piece Bishop Black ( File.f, Rank.r8 )
-    , Piece Knight Black ( File.g, Rank.r8 )
-    , Piece Rook Black ( File.h, Rank.r8 )
-    , Piece Pawn White ( File.a, Rank.r2 )
-    , Piece Pawn White ( File.b, Rank.r2 )
-    , Piece Pawn White ( File.c, Rank.r2 )
-    , Piece Pawn White ( File.d, Rank.r2 )
-    , Piece Pawn White ( File.e, Rank.r2 )
-    , Piece Pawn White ( File.f, Rank.r2 )
-    , Piece Pawn White ( File.g, Rank.r2 )
-    , Piece Pawn White ( File.h, Rank.r2 )
-    , Piece Rook White ( File.a, Rank.r1 )
-    , Piece Knight White ( File.b, Rank.r1 )
-    , Piece Bishop White ( File.c, Rank.r1 )
-    , Piece Queen White ( File.d, Rank.r1 )
-    , Piece King White ( File.e, Rank.r1 )
-    , Piece Bishop White ( File.f, Rank.r1 )
-    , Piece Knight White ( File.g, Rank.r1 )
-    , Piece Rook White ( File.h, Rank.r1 )
-    ]
 
 
 type alias Props =
@@ -103,19 +66,61 @@ view { rotation, boardSize, selected, pieces, isTouchMode, input, error } =
                                     []
 
                                 Just errText ->
-                                    [ rect [ y "90%", width "100%", height "10%", opacity "0.8", fill "white" ] []
-                                    , text_
-                                        [ x "50%"
-                                        , y "95%"
-                                        , dominantBaseline "middle"
-                                        , textAnchor "middle"
-                                        , style "font: bold 13px sans-serif; fill: red"
+                                    let
+                                        wrapped =
+                                            wrapLine errText
+
+                                        boxSize =
+                                            (List.length wrapped + 1) * 15
+                                    in
+                                    [ rect
+                                        [ y <| String.fromInt (size - boxSize)
+                                        , width "100%"
+                                        , height <| String.fromInt boxSize
+                                        , opacity "0.8"
+                                        , fill "white"
                                         ]
-                                        [ text <| Maybe.withDefault "" error ]
+                                        []
                                     ]
+                                        ++ List.indexedMap
+                                            (\index message ->
+                                                text_
+                                                    [ x "50%"
+                                                    , y <| String.fromInt (size - 15 - (index * 15))
+                                                    , dominantBaseline "middle"
+                                                    , textAnchor "middle"
+                                                    , style "font: bold 13px sans-serif; fill: red"
+                                                    ]
+                                                    [ text message ]
+                                            )
+                                            wrapped
                            )
 
                 else
                     []
                )
         )
+
+
+wrapLine : String -> List String
+wrapLine message =
+    String.split " " message
+        |> List.foldl
+            (\word acc ->
+                case acc of
+                    ( length, str ) :: rest ->
+                        let
+                            newLength =
+                                length + String.length word + 1
+                        in
+                        if newLength < 50 then
+                            ( newLength, str ++ " " ++ word ) :: rest
+
+                        else
+                            ( String.length word, word ) :: ( length, str ) :: rest
+
+                    [] ->
+                        [ ( String.length word, word ) ]
+            )
+            []
+        |> List.map Tuple.second
