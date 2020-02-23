@@ -415,7 +415,18 @@ evalInputState inputState gameState =
                     Err "Multiple possible moves. Try to specify which file or rank your piece is on. Ex. Rd5 -> Rad5"
 
         Castled side ->
-            castle side gameState
+            case castle side gameState of
+                Ok ( target, source, nextGameState ) ->
+                    Ok
+                        ( target
+                        , source
+                        , { nextGameState
+                            | history = inputState :: nextGameState.history
+                          }
+                        )
+
+                Err err ->
+                    Err err
 
         _ ->
             Err "Invalid input state"
