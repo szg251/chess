@@ -50,19 +50,19 @@ initPieces =
     ]
 
 
-view : Int -> List Field -> List Piece -> Svg msg
-view rotation selected pieces =
+view : Int -> Int -> List Field -> List Piece -> Svg msg
+view rotation boardSize selected pieces =
     let
         size =
             Field.fieldSize * 8 + 2
 
-        boardSize =
+        viewBoxSize =
             String.join " " [ "0 0", String.fromInt size, String.fromInt size ]
     in
     svg
-        [ viewBox boardSize
-        , width "500"
-        , height "500"
+        [ viewBox viewBoxSize
+        , width <| String.fromInt boardSize
+        , height <| String.fromInt boardSize
         ]
         [ g
             [ style <|

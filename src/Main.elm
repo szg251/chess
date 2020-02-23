@@ -1,7 +1,8 @@
 module Main exposing (main)
 
 import Browser
-import Browser.Dom as Dom
+import Browser.Dom as Dom exposing (Viewport)
+import Browser.Events
 import Data.Board as Board
 import Data.Piece exposing (Color(..), Piece, PieceType(..))
 import File exposing (File)
@@ -10,7 +11,7 @@ import File.Select as Select
 import GameLogic exposing (GameState)
 import History
 import Html exposing (Html, a, br, button, div, form, input, label, strong, text)
-import Html.Attributes exposing (checked, disabled, for, href, id, target, type_, value)
+import Html.Attributes exposing (checked, disabled, for, href, id, style, target, type_, value)
 import Html.Events exposing (onClick, onInput, onSubmit)
 import InputState exposing (InputState(..))
 import Parser
@@ -21,9 +22,11 @@ import Task
 type alias Model =
     { gameState : GameState
     , rotateOnTurn : Bool
+    , showTouchKeyboard : Bool
     , input : String
     , inputState : InputState
     , error : Maybe String
+    , boardSize : Int
     }
 
 
@@ -31,19 +34,27 @@ init : () -> ( Model, Cmd Msg )
 init _ =
     ( { gameState = GameLogic.init
       , rotateOnTurn = True
+      , showTouchKeyboard = False
       , input = ""
       , inputState = NotSelected
       , error = Nothing
+      , boardSize = 700
       }
-    , Task.attempt (\_ -> NoOp) (Dom.focus "input-bar")
+    , Cmd.batch
+        [ Task.attempt (\_ -> NoOp) (Dom.focus "input-bar")
+        , Task.perform GotViewport Dom.getViewport
+        ]
     )
 
 
 type Msg
     = NoOp
+    | Resized Int Int
+    | GotViewport Viewport
     | Input String
     | Move
     | RotateOnTurnClicked
+    | ShowTouchKeyboardClicked
     | Restart
     | LoadButtonClicked
     | SaveButtonClicked
@@ -57,15 +68,24 @@ update msg model =
         NoOp ->
             ( model, Cmd.none )
 
+        Resized width height ->
+            ( { model | boardSize = min width height }, Cmd.none )
+
+        GotViewport { viewport } ->
+            ( { model | boardSize = min viewport.width viewport.height |> round }, Cmd.none )
+
         RotateOnTurnClicked ->
             ( { model | rotateOnTurn = not model.rotateOnTurn }, Cmd.none )
 
+        ShowTouchKeyboardClicked ->
+            ( { model | showTouchKeyboard = not model.showTouchKeyboard }, Cmd.none )
+
         Restart ->
-            ( { gameState = GameLogic.init
-              , rotateOnTurn = True
-              , input = ""
-              , inputState = NotSelected
-              , error = Nothing
+            ( { model
+                | gameState = GameLogic.init
+                , input = ""
+                , inputState = NotSelected
+                , error = Nothing
               }
             , Cmd.none
             )
@@ -149,48 +169,101 @@ view model =
                 |> (\result -> ( Result.withDefault [] result, ResultE.error result ))
     in
     div []
-        [ div []
-            [ input
-                [ id "is-rotating"
-                , type_ "checkbox"
-                , checked model.rotateOnTurn
-                , onClick RotateOnTurnClicked
-                ]
-                []
-            , label [ for "is-rotating" ] [ text "Rotate on turns" ]
-            , button [ onClick Restart ] [ text "Restart" ]
-            ]
-        , Board.view
-            (if model.rotateOnTurn && model.gameState.turn == Black then
-                180
+        [ div [ style "display" "flex", style "flex-wrap" "wrap" ]
+            [ Board.view
+                (if model.rotateOnTurn && model.gameState.turn == Black then
+                    180
 
-             else
-                0
-            )
-            selectedFields
-            model.gameState.pieces
-        , div []
-            [ text "The pieces are controlled by "
-            , a
-                [ href "https://www.cheatography.com/davechild/cheat-sheets/chess-algebraic-notation/"
-                , target "blank"
+                 else
+                    0
+                )
+                model.boardSize
+                selectedFields
+                model.gameState.pieces
+            , div []
+                [ div []
+                    [ text "The pieces are controlled by "
+                    , a
+                        [ href "https://www.cheatography.com/davechild/cheat-sheets/chess-algebraic-notation/"
+                        , target "blank"
+                        ]
+                        [ text "algebraic notation" ]
+                    , text " like Nc3"
+                    ]
+                , form [ onSubmit Move ]
+                    [ input [ id "input-bar", onInput Input, value model.input ] []
+                    , strong [] [ text <| Maybe.withDefault "" error ]
+                    ]
+                , input
+                    [ id "is-rotating"
+                    , type_ "checkbox"
+                    , checked model.rotateOnTurn
+                    , onClick RotateOnTurnClicked
+                    ]
+                    []
+                , label [ for "is-rotating" ] [ text "Rotate on turns" ]
+                , input
+                    [ id "show-touch-keyboard"
+                    , type_ "checkbox"
+                    , checked model.showTouchKeyboard
+                    , onClick ShowTouchKeyboardClicked
+                    ]
+                    []
+                , label [ for "show-touch-keyboard" ] [ text "Display touch keyboard" ]
+                , div []
+                    [ button [ onClick Restart ] [ text "Restart" ]
+                    , button [ onClick SaveButtonClicked ] [ text "Save to file" ]
+                    , button [ onClick LoadButtonClicked ] [ text "Load from file" ]
+                    ]
+                , if model.showTouchKeyboard then
+                    viewTouchKeyboard model.input
+
+                  else
+                    text ""
+                , History.view model.gameState.history
                 ]
-                [ text "algebraic notation" ]
-            , text " like Nc3"
             ]
-        , form [ onSubmit Move ]
-            [ input [ id "input-bar", onInput Input, value model.input ] []
+        ]
+
+
+viewTouchKey : String -> String -> Html Msg
+viewTouchKey prevString buttonValue =
+    button
+        [ style "width" "100px"
+        , style "height" "100px"
+        , style "font-size" "25px"
+        , onClick (Input (prevString ++ buttonValue))
+        ]
+        [ text buttonValue ]
+
+
+viewTouchKeyboard : String -> Html Msg
+viewTouchKeyboard prevString =
+    div []
+        [ div [] (List.map (viewTouchKey prevString) [ "R", "N", "B", "Q", "K" ])
+        , div [] (List.map (viewTouchKey prevString) [ "a", "b", "c", "d", "e", "f", "g", "h" ])
+        , div [] (List.map (viewTouchKey prevString) [ "1", "2", "3", "4", "5", "6", "7", "8" ])
+        , div [] (List.map (viewTouchKey prevString) [ "x", "0-0", "0-0-0", "e.p." ])
+        , button
+            [ style "width" "100px"
+            , style "height" "100px"
+            , style "font-size" "25px"
+            , onClick Move
             ]
-        , strong [] [ text <| Maybe.withDefault "" error ]
-        , button [ onClick SaveButtonClicked ] [ text "Save to file" ]
-        , button [ onClick LoadButtonClicked ] [ text "Load from file" ]
-        , History.view model.gameState.history
+            [ text "enter" ]
+        , button
+            [ style "width" "100px"
+            , style "height" "100px"
+            , style "font-size" "25px"
+            , onClick (Input "")
+            ]
+            [ text "clear" ]
         ]
 
 
 subscriptions : Model -> Sub Msg
 subscriptions _ =
-    Sub.none
+    Browser.Events.onResize Resized
 
 
 main : Program () Model Msg
