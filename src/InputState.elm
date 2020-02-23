@@ -170,10 +170,10 @@ parser =
             |= selectionHelperParser
             |. inputStateEnd
         , succeed (Castled QueenSide)
-            |. keyword "0-0-0"
+            |. oneOf [ keyword "0-0-0", keyword "O-O-O" ]
             |. inputStateEnd
         , succeed (Castled KingSide)
-            |. keyword "0-0"
+            |. oneOf [ keyword "0-0", keyword "O-O" ]
             |. inputStateEnd
         ]
 
