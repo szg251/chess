@@ -11,7 +11,7 @@ import File.Select as Select
 import GameLogic exposing (GameState)
 import History
 import Html exposing (Attribute, Html, a, br, button, div, form, input, label, strong, text)
-import Html.Attributes exposing (checked, disabled, for, href, id, style, target, type_, value)
+import Html.Attributes exposing (checked, disabled, for, href, id, name, style, target, type_, value)
 import Html.Events exposing (onClick, onInput, onSubmit)
 import InputState exposing (InputState(..))
 import Parser
@@ -22,7 +22,7 @@ import View.Board as Board
 
 type alias Model =
     { gameState : GameState
-    , rotateOnTurn : Bool
+    , viewpoint : Viewpoint
     , isTouchMode : Bool
     , input : String
     , inputState : InputState
@@ -33,10 +33,45 @@ type alias Model =
     }
 
 
+type Viewpoint
+    = BlackSide
+    | WhiteSide
+    | Rotating
+
+
+viewpointToString : Viewpoint -> String
+viewpointToString viewpoint =
+    case viewpoint of
+        BlackSide ->
+            "BlackSide"
+
+        WhiteSide ->
+            "WhiteSide"
+
+        Rotating ->
+            "Rotating"
+
+
+viewpointFromString : String -> Maybe Viewpoint
+viewpointFromString viewpoint =
+    case viewpoint of
+        "BlackSide" ->
+            Just BlackSide
+
+        "WhiteSide" ->
+            Just WhiteSide
+
+        "Rotating" ->
+            Just Rotating
+
+        _ ->
+            Nothing
+
+
 init : () -> ( Model, Cmd Msg )
 init _ =
     ( { gameState = GameLogic.init
-      , rotateOnTurn = True
+      , viewpoint = WhiteSide
       , isTouchMode = False
       , input = ""
       , inputState = NotSelected
@@ -58,7 +93,7 @@ type Msg
     | GotViewport Viewport
     | Input String
     | Move
-    | RotateOnTurnClicked
+    | ChangeViewpoint String
     | ShowTouchKeyboardClicked
     | Restart
     | LoadButtonClicked
@@ -107,8 +142,13 @@ update msg model =
             , Cmd.none
             )
 
-        RotateOnTurnClicked ->
-            ( { model | rotateOnTurn = not model.rotateOnTurn }, Cmd.none )
+        ChangeViewpoint value ->
+            case viewpointFromString value of
+                Nothing ->
+                    ( model, Cmd.none )
+
+                Just viewpoint ->
+                    ( { model | viewpoint = viewpoint }, Cmd.none )
 
         ShowTouchKeyboardClicked ->
             ( { model | isTouchMode = not model.isTouchMode }, Cmd.none )
@@ -200,7 +240,10 @@ view model =
         [ div [ style "display" "flex", style "flex-wrap" "wrap" ]
             [ Board.view
                 { rotation =
-                    if model.rotateOnTurn && model.gameState.turn == Black then
+                    if
+                        (model.viewpoint == Rotating && model.gameState.turn == Black)
+                            || (model.viewpoint == BlackSide)
+                    then
                         180
 
                     else
@@ -240,13 +283,32 @@ view model =
                     , text " like Nc3"
                     ]
                 , input
-                    [ id "is-rotating"
-                    , type_ "checkbox"
-                    , checked model.rotateOnTurn
-                    , onClick RotateOnTurnClicked
+                    [ id "viewpoint-white"
+                    , name "viewpoint"
+                    , type_ "radio"
+                    , value (viewpointToString WhiteSide)
+                    , onInput ChangeViewpoint
                     ]
                     []
-                , label [ for "is-rotating" ] [ text "Rotate on turns" ]
+                , label [ for "viewpoint-white" ] [ text "Play as white" ]
+                , input
+                    [ id "viewpoint-black"
+                    , name "viewpoint"
+                    , type_ "radio"
+                    , value (viewpointToString BlackSide)
+                    , onInput ChangeViewpoint
+                    ]
+                    []
+                , label [ for "viewpoint-black" ] [ text "Play as black" ]
+                , input
+                    [ id "viewpoint-rotating"
+                    , name "viewpoint"
+                    , type_ "radio"
+                    , value (viewpointToString Rotating)
+                    , onInput ChangeViewpoint
+                    ]
+                    []
+                , label [ for "viewpoint-rotating" ] [ text "Rotating" ]
                 , input
                     [ id "show-touch-keyboard"
                     , type_ "checkbox"
