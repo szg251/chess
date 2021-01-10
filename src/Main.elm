@@ -287,6 +287,7 @@ view model =
                     , name "viewpoint"
                     , type_ "radio"
                     , value (viewpointToString WhiteSide)
+                    , checked (model.viewpoint == WhiteSide)
                     , onInput ChangeViewpoint
                     ]
                     []
@@ -295,6 +296,7 @@ view model =
                     [ id "viewpoint-black"
                     , name "viewpoint"
                     , type_ "radio"
+                    , checked (model.viewpoint == BlackSide)
                     , value (viewpointToString BlackSide)
                     , onInput ChangeViewpoint
                     ]
@@ -304,6 +306,7 @@ view model =
                     [ id "viewpoint-rotating"
                     , name "viewpoint"
                     , type_ "radio"
+                    , checked (model.viewpoint == Rotating)
                     , value (viewpointToString Rotating)
                     , onInput ChangeViewpoint
                     ]
