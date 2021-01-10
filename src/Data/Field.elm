@@ -41,13 +41,13 @@ rankToY rank =
 getColor : List Field -> File -> Rank -> String
 getColor selectedFields file rank =
     if List.any ((==) ( file, rank )) selectedFields then
-        "#05a"
+        "#c8a75b"
 
     else if modBy 2 (File.toInt file + 7 - Rank.toInt rank) == 0 then
-        "#fff"
+        "#b8a281"
 
     else
-        "#444"
+        "#765942"
 
 
 view : List Field -> File -> Rank -> Svg msg
@@ -58,7 +58,6 @@ view selected file rank =
         , width <| String.fromInt fieldSize
         , height <| String.fromInt fieldSize
         , fill <| getColor selected file rank
-        , stroke "#444"
         , strokeWidth "1"
         ]
         []
