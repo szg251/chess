@@ -22,6 +22,7 @@ import View.Board as Board
 
 type alias Model =
     { gameState : GameState
+    , replayedState : Maybe ( Int, List Piece )
     , viewpoint : Viewpoint
     , isTouchMode : Bool
     , input : String
@@ -71,6 +72,7 @@ viewpointFromString viewpoint =
 init : () -> ( Model, Cmd Msg )
 init _ =
     ( { gameState = GameLogic.init
+      , replayedState = Nothing
       , viewpoint = WhiteSide
       , isTouchMode = False
       , input = ""
@@ -96,6 +98,7 @@ type Msg
     | ChangeViewpoint String
     | ShowTouchKeyboardClicked
     | Restart
+    | Replayed Int
     | LoadButtonClicked
     | SaveButtonClicked
     | FileSelected File
@@ -164,6 +167,27 @@ update msg model =
                 , inputState = NotSelected
                 , selectedFields = []
                 , error = Nothing
+              }
+            , Cmd.none
+            )
+
+        Replayed stepNum ->
+            let
+                history =
+                    model.gameState.history
+            in
+            ( { model
+                | replayedState =
+                    if stepNum == List.length history - 1 then
+                        Nothing
+
+                    else
+                        history
+                            |> List.drop (List.length history - (stepNum + 1))
+                            |> GameLogic.loadHistory
+                            |> Result.toMaybe
+                            |> Maybe.map .pieces
+                            |> Maybe.map (Tuple.pair stepNum)
               }
             , Cmd.none
             )
@@ -255,7 +279,10 @@ view model =
                         0
                 , boardSize = model.boardSize
                 , selected = model.selectedFields
-                , pieces = model.gameState.pieces
+                , pieces =
+                    model.replayedState
+                        |> Maybe.map Tuple.second
+                        |> Maybe.withDefault model.gameState.pieces
                 , isTouchMode = model.isTouchMode
                 , input = model.input
                 , error = model.error
@@ -331,6 +358,8 @@ view model =
                     , button [ onClick LoadButtonClicked ] [ text "Load from file" ]
                     ]
                 , History.view model.gameState.history
+                    (Maybe.map Tuple.first model.replayedState)
+                    Replayed
                 ]
             ]
         ]

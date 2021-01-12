@@ -1,7 +1,10 @@
 module History exposing (..)
 
-import Html exposing (Html, li, ol, text)
+import Html exposing (Html, li, ol, span, strong, text)
+import Html.Attributes exposing (style)
+import Html.Events exposing (onClick)
 import InputState exposing (InputState(..))
+import List.Extra as ListE
 import Parser
     exposing
         ( (|.)
@@ -27,34 +30,42 @@ type alias SerializedHistory =
     List String
 
 
-groupMoves : List String -> List String
-groupMoves moves =
-    case moves of
-        whiteMove :: blackMove :: rest ->
-            (whiteMove ++ " " ++ blackMove) :: groupMoves rest
+view : History -> Maybe Int -> (Int -> msg) -> Html msg
+view history selected toMsg =
+    let
+        viewHistoryLine lineNum steps =
+            li []
+                (List.indexedMap
+                    (\index step ->
+                        (if selected == Just (lineNum * 2 + index) then
+                            strong
 
-        lastMove ->
-            lastMove
-
-
-view : History -> Html msg
-view history =
-    List.reverse history
-        |> List.map InputState.serialize
-        |> groupMoves
-        |> (\lines ->
-                ol
-                    []
-                    (List.map (li [] << List.singleton << text) lines)
-           )
+                         else
+                            span
+                        )
+                            [ style "padding" "0 5px"
+                            , style "cursor" "pointer"
+                            , onClick (toMsg (lineNum * 2 + index))
+                            ]
+                            [ text step ]
+                    )
+                    steps
+                )
+    in
+    ol []
+        (List.reverse history
+            |> List.map InputState.serialize
+            |> ListE.groupsOf 2
+            |> List.indexedMap viewHistoryLine
+        )
 
 
 serialize : History -> String
 serialize history =
     List.reverse history
         |> List.map InputState.serialize
-        |> groupMoves
-        |> List.indexedMap (\index line -> String.fromInt (index + 1) ++ ". " ++ line)
+        |> ListE.groupsOf 2
+        |> List.indexedMap (\index steps -> String.fromInt (index + 1) ++ ". " ++ String.join " " steps)
         |> String.join "\n"
 
 

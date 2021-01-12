@@ -13,8 +13,7 @@ build-with-debug :: clean copy-assets
             | uglifyjs --mangle --output=./dist/Main.js
 
 deploy :: build-with-debug
-	cp -r ./.now ./dist
-	now ./dist
+	vercel --prod
 
 copy-assets ::
 	cp ./assets/* ./dist/
