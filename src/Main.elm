@@ -102,6 +102,10 @@ type Msg
     | FileLoaded String
 
 
+
+-- | TimeTravel (Maybe Int)
+
+
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
@@ -158,6 +162,7 @@ update msg model =
                 | gameState = GameLogic.init
                 , input = ""
                 , inputState = NotSelected
+                , selectedFields = []
                 , error = Nothing
               }
             , Cmd.none
