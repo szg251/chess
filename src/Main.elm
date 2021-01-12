@@ -306,14 +306,15 @@ view model =
                         , strong [] [ text <| Maybe.withDefault "" model.error ]
                         ]
                 , div []
-                    [ text "The pieces are controlled by "
+                    [ text "This chess is intentionally \"hard to use\", the goal is to get familiar with "
                     , a
                         [ href "https://www.cheatography.com/davechild/cheat-sheets/chess-algebraic-notation/"
                         , target "blank"
                         ]
                         [ text "algebraic notation" ]
-                    , text " like Nc3"
+                    , text ". Therefore, you can only move the pieces on the board using keyboard commands like Nc3."
                     ]
+                , div [ style "font-weight" "bold" ] [ text "Viewpoint" ]
                 , input
                     [ id "viewpoint-white"
                     , name "viewpoint"
@@ -323,7 +324,7 @@ view model =
                     , onInput ChangeViewpoint
                     ]
                     []
-                , label [ for "viewpoint-white" ] [ text "Play as white" ]
+                , label [ for "viewpoint-white" ] [ text "White" ]
                 , input
                     [ id "viewpoint-black"
                     , name "viewpoint"
@@ -333,7 +334,7 @@ view model =
                     , onInput ChangeViewpoint
                     ]
                     []
-                , label [ for "viewpoint-black" ] [ text "Play as black" ]
+                , label [ for "viewpoint-black" ] [ text "Black" ]
                 , input
                     [ id "viewpoint-rotating"
                     , name "viewpoint"
@@ -344,6 +345,7 @@ view model =
                     ]
                     []
                 , label [ for "viewpoint-rotating" ] [ text "Rotating" ]
+                , br [] []
                 , input
                     [ id "show-touch-keyboard"
                     , type_ "checkbox"
