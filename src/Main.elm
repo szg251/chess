@@ -14,6 +14,7 @@ import Html exposing (Attribute, Html, a, br, button, div, form, input, label, s
 import Html.Attributes exposing (checked, disabled, for, href, id, name, style, target, type_, value)
 import Html.Events exposing (onClick, onInput, onSubmit)
 import InputState exposing (InputState(..))
+import Json.Decode as Decode
 import Parser
 import Result.Extra as ResultE
 import Task
@@ -457,7 +458,26 @@ viewTouchKeyboard prevString =
 
 subscriptions : Model -> Sub Msg
 subscriptions _ =
-    Browser.Events.onResize Resized
+    Sub.batch
+        [ Browser.Events.onResize Resized
+        , Browser.Events.onKeyDown keyDecoder
+        ]
+
+
+keyDecoder : Decode.Decoder Msg
+keyDecoder =
+    Decode.field "key" Decode.string
+        |> Decode.andThen
+            (\key ->
+                if key == "ArrowLeft" then
+                    Decode.succeed PrevStep
+
+                else if key == "ArrowRight" then
+                    Decode.succeed NextStep
+
+                else
+                    Decode.fail "fail"
+            )
 
 
 main : Program () Model Msg
