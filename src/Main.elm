@@ -175,6 +175,7 @@ update msg model =
                 , inputState = NotSelected
                 , selectedFields = []
                 , error = Nothing
+                , replayedState = Nothing
               }
             , Cmd.none
             )
