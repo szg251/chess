@@ -55,7 +55,7 @@ view history selected toMsg =
     ol []
         (List.reverse history
             |> List.map InputState.serialize
-            |> ListE.groupsOf 2
+            |> ListE.greedyGroupsOf 2
             |> List.indexedMap viewHistoryLine
         )
 
@@ -64,7 +64,7 @@ serialize : History -> String
 serialize history =
     List.reverse history
         |> List.map InputState.serialize
-        |> ListE.groupsOf 2
+        |> ListE.greedyGroupsOf 2
         |> List.indexedMap (\index steps -> String.fromInt (index + 1) ++ ". " ++ String.join " " steps)
         |> String.join "\n"
 
