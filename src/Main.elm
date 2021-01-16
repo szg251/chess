@@ -9,7 +9,7 @@ import File exposing (File)
 import File.Download as Download
 import File.Select as Select
 import GameLogic exposing (GameState)
-import History
+import History exposing (History)
 import Html exposing (Attribute, Html, a, br, button, div, form, input, label, strong, text)
 import Html.Attributes exposing (checked, disabled, for, href, id, name, style, target, type_, value)
 import Html.Events exposing (onClick, onInput, onSubmit)
@@ -22,7 +22,7 @@ import View.Board as Board
 
 type alias Model =
     { gameState : GameState
-    , replayedState : Maybe ( Int, List Piece )
+    , replayedState : Maybe ( Int, GameState )
     , viewpoint : Viewpoint
     , isTouchMode : Bool
     , input : String
@@ -69,6 +69,11 @@ viewpointFromString viewpoint =
             Nothing
 
 
+getActiveGameState : Model -> GameState
+getActiveGameState model =
+    Maybe.withDefault model.gameState (Maybe.map Tuple.second model.replayedState)
+
+
 init : () -> ( Model, Cmd Msg )
 init _ =
     ( { gameState = GameLogic.init
@@ -99,6 +104,8 @@ type Msg
     | ShowTouchKeyboardClicked
     | Restart
     | Replayed Int
+    | PrevStep
+    | NextStep
     | LoadButtonClicked
     | SaveButtonClicked
     | FileSelected File
@@ -172,22 +179,46 @@ update msg model =
             )
 
         Replayed stepNum ->
+            ( { model
+                | replayedState = replayHistory model.gameState.history stepNum
+                , selectedFields = []
+              }
+            , Cmd.none
+            )
+
+        PrevStep ->
             let
-                history =
-                    model.gameState.history
+                lastStepNum =
+                    model.replayedState
+                        |> Maybe.map Tuple.first
+                        |> Maybe.withDefault (List.length model.gameState.history - 1)
             in
             ( { model
                 | replayedState =
-                    if stepNum == List.length history - 1 then
-                        Nothing
+                    replayHistory
+                        model.gameState.history
+                        (max (lastStepNum - 1) 0)
+                , selectedFields = []
+              }
+            , Cmd.none
+            )
 
-                    else
-                        history
-                            |> List.drop (List.length history - (stepNum + 1))
-                            |> GameLogic.loadHistory
-                            |> Result.toMaybe
-                            |> Maybe.map .pieces
-                            |> Maybe.map (Tuple.pair stepNum)
+        NextStep ->
+            let
+                historyLength =
+                    List.length model.gameState.history
+
+                lastStepNum =
+                    model.replayedState
+                        |> Maybe.map Tuple.first
+                        |> Maybe.withDefault historyLength
+            in
+            ( { model
+                | replayedState =
+                    replayHistory
+                        model.gameState.history
+                        (min (lastStepNum + 1) historyLength)
+                , selectedFields = []
               }
             , Cmd.none
             )
@@ -200,7 +231,7 @@ update msg model =
                         |> Result.withDefault NotSelected
 
                 ( selectedFields, error ) =
-                    GameLogic.getSelectedFields inputState model.gameState
+                    GameLogic.getSelectedFields inputState (getActiveGameState model)
                         |> (\result -> ( Result.withDefault [] result, ResultE.error result ))
             in
             ( { model
@@ -213,13 +244,14 @@ update msg model =
             )
 
         Move ->
-            case GameLogic.getNextGameState model.inputState model.gameState of
+            case GameLogic.getNextGameState model.inputState (getActiveGameState model) of
                 Ok gameState ->
                     ( { model
                         | input = ""
                         , inputState = NotSelected
                         , gameState = gameState
                         , error = Nothing
+                        , replayedState = Nothing
                       }
                     , Cmd.none
                     )
@@ -263,6 +295,19 @@ update msg model =
                     ( { model | error = Just "Couldn't parse file" }, Cmd.none )
 
 
+replayHistory : History -> Int -> Maybe ( Int, GameState )
+replayHistory history stepNum =
+    if stepNum == List.length history - 1 then
+        Nothing
+
+    else
+        history
+            |> List.drop (List.length history - (stepNum + 1))
+            |> GameLogic.loadHistory
+            |> Result.toMaybe
+            |> Maybe.map (Tuple.pair stepNum)
+
+
 view : Model -> Html Msg
 view model =
     div []
@@ -280,9 +325,7 @@ view model =
                 , boardSize = model.boardSize
                 , selected = model.selectedFields
                 , pieces =
-                    model.replayedState
-                        |> Maybe.map Tuple.second
-                        |> Maybe.withDefault model.gameState.pieces
+                    (getActiveGameState model).pieces
                 , isTouchMode = model.isTouchMode
                 , input = model.input
                 , error = model.error
@@ -362,6 +405,10 @@ view model =
                 , History.view model.gameState.history
                     (Maybe.map Tuple.first model.replayedState)
                     Replayed
+                , div []
+                    [ button [ onClick PrevStep ] [ text "<" ]
+                    , button [ onClick NextStep ] [ text ">" ]
+                    ]
                 ]
             ]
         ]
