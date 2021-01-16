@@ -1,8 +1,8 @@
 module History exposing (..)
 
-import Html exposing (Html, li, ol, span, strong, text)
-import Html.Attributes exposing (style)
-import Html.Events exposing (onClick)
+import Html exposing (Html, li, ol, span, strong, text, textarea)
+import Html.Attributes exposing (style, value)
+import Html.Events exposing (onClick, onInput)
 import InputState exposing (InputState(..))
 import List.Extra as ListE
 import Parser
@@ -30,34 +30,52 @@ type alias SerializedHistory =
     List String
 
 
-view : History -> Maybe Int -> (Int -> msg) -> Html msg
-view history selected toMsg =
-    let
-        viewHistoryLine lineNum steps =
-            li []
-                (List.indexedMap
-                    (\index step ->
-                        (if selected == Just (lineNum * 2 + index) then
-                            strong
+view :
+    { history : History
+    , alternateHistory : Maybe String
+    , selected : Maybe Int
+    , replayedMsg : Int -> msg
+    , editedMsg : String -> msg
+    }
+    -> Html msg
+view { history, alternateHistory, selected, replayedMsg, editedMsg } =
+    case alternateHistory of
+        Nothing ->
+            let
+                viewHistoryLine lineNum steps =
+                    li []
+                        (List.indexedMap
+                            (\index step ->
+                                (if selected == Just (lineNum * 2 + index) then
+                                    strong
 
-                         else
-                            span
+                                 else
+                                    span
+                                )
+                                    [ style "padding" "0 5px"
+                                    , style "cursor" "pointer"
+                                    , onClick (replayedMsg (lineNum * 2 + index))
+                                    ]
+                                    [ text step ]
+                            )
+                            steps
                         )
-                            [ style "padding" "0 5px"
-                            , style "cursor" "pointer"
-                            , onClick (toMsg (lineNum * 2 + index))
-                            ]
-                            [ text step ]
-                    )
-                    steps
+            in
+            ol []
+                (List.reverse history
+                    |> List.map InputState.serialize
+                    |> ListE.greedyGroupsOf 2
+                    |> List.indexedMap viewHistoryLine
                 )
-    in
-    ol []
-        (List.reverse history
-            |> List.map InputState.serialize
-            |> ListE.greedyGroupsOf 2
-            |> List.indexedMap viewHistoryLine
-        )
+
+        Just rawHistory ->
+            textarea
+                [ onInput editedMsg
+                , value rawHistory
+                , style "height" "500px"
+                , style "width" "300px"
+                ]
+                []
 
 
 serialize : History -> String

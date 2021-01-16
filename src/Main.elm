@@ -15,6 +15,7 @@ import Html.Attributes exposing (checked, disabled, for, href, id, name, style, 
 import Html.Events exposing (onClick, onInput, onSubmit)
 import InputState exposing (InputState(..))
 import Json.Decode as Decode
+import Maybe.Extra as MaybeE
 import Parser
 import Result.Extra as ResultE
 import Task
@@ -24,6 +25,7 @@ import View.Board as Board
 type alias Model =
     { gameState : GameState
     , replayedState : Maybe ( Int, GameState )
+    , alternateHistory : Maybe String
     , viewpoint : Viewpoint
     , isTouchMode : Bool
     , input : String
@@ -79,6 +81,7 @@ init : () -> ( Model, Cmd Msg )
 init _ =
     ( { gameState = GameLogic.init
       , replayedState = Nothing
+      , alternateHistory = Nothing
       , viewpoint = WhiteSide
       , isTouchMode = False
       , input = ""
@@ -105,6 +108,8 @@ type Msg
     | ShowTouchKeyboardClicked
     | Restart
     | Replayed Int
+    | ToggleEdit
+    | HistoryEdited String
     | PrevStep
     | NextStep
     | LoadButtonClicked
@@ -168,6 +173,37 @@ update msg model =
         ShowTouchKeyboardClicked ->
             ( { model | isTouchMode = not model.isTouchMode }, Cmd.none )
 
+        ToggleEdit ->
+            ( case model.alternateHistory of
+                Nothing ->
+                    { model | alternateHistory = Just (History.serialize model.gameState.history) }
+
+                Just raw ->
+                    case Parser.run History.parser raw of
+                        Ok history ->
+                            case GameLogic.loadHistory history of
+                                Ok gameState ->
+                                    { model
+                                        | input = ""
+                                        , inputState = NotSelected
+                                        , gameState = gameState
+                                        , error = Nothing
+                                        , alternateHistory = Nothing
+                                    }
+
+                                Err err ->
+                                    { model
+                                        | error = Just err
+                                        , input = ""
+                                        , inputState = NotSelected
+                                        , alternateHistory = Nothing
+                                    }
+
+                        Err err ->
+                            { model | error = Just "Couldn't parse history" }
+            , Cmd.none
+            )
+
         Restart ->
             ( { model
                 | gameState = GameLogic.init
@@ -185,6 +221,11 @@ update msg model =
                 | replayedState = replayHistory model.gameState.history stepNum
                 , selectedFields = []
               }
+            , Cmd.none
+            )
+
+        HistoryEdited history ->
+            ( { model | alternateHistory = Just history }
             , Cmd.none
             )
 
@@ -271,30 +312,31 @@ update msg model =
             ( model, Task.perform FileLoaded (File.toString file) )
 
         FileLoaded file ->
-            case Parser.run History.parser file of
-                Ok history ->
-                    case GameLogic.loadHistory history of
-                        Ok gameState ->
-                            ( { model
-                                | input = ""
-                                , inputState = NotSelected
-                                , gameState = gameState
-                                , error = Nothing
-                              }
-                            , Cmd.none
-                            )
+            ( loadHistory file model, Cmd.none )
 
-                        Err err ->
-                            ( { model
-                                | error = Just err
-                                , input = ""
-                                , inputState = NotSelected
-                              }
-                            , Cmd.none
-                            )
+
+loadHistory : String -> Model -> Model
+loadHistory raw model =
+    case Parser.run History.parser raw of
+        Ok history ->
+            case GameLogic.loadHistory history of
+                Ok gameState ->
+                    { model
+                        | input = ""
+                        , inputState = NotSelected
+                        , gameState = gameState
+                        , error = Nothing
+                    }
 
                 Err err ->
-                    ( { model | error = Just "Couldn't parse file" }, Cmd.none )
+                    { model
+                        | error = Just err
+                        , input = ""
+                        , inputState = NotSelected
+                    }
+
+        Err err ->
+            { model | error = Just "Couldn't parse history" }
 
 
 replayHistory : History -> Int -> Maybe ( Int, GameState )
@@ -403,10 +445,23 @@ view model =
                     [ button [ onClick Restart ] [ text "Restart" ]
                     , button [ onClick SaveButtonClicked ] [ text "Save to file" ]
                     , button [ onClick LoadButtonClicked ] [ text "Load from file" ]
+                    , button [ onClick ToggleEdit ]
+                        [ text
+                            (if MaybeE.isJust model.alternateHistory then
+                                "Save history"
+
+                             else
+                                "Edit history"
+                            )
+                        ]
                     ]
-                , History.view model.gameState.history
-                    (Maybe.map Tuple.first model.replayedState)
-                    Replayed
+                , History.view
+                    { history = model.gameState.history
+                    , selected = Maybe.map Tuple.first model.replayedState
+                    , alternateHistory = model.alternateHistory
+                    , replayedMsg = Replayed
+                    , editedMsg = HistoryEdited
+                    }
                 , div []
                     [ button [ onClick PrevStep ] [ text "<" ]
                     , button [ onClick NextStep ] [ text ">" ]
