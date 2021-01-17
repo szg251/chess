@@ -4,7 +4,7 @@ import Data.File as File
 import Data.Piece exposing (PieceType(..))
 import Data.Rank as Rank
 import Expect exposing (Expectation)
-import InputState exposing (ExtraInfo(..), InputState(..), SelectionHelper(..), Side(..))
+import InputState exposing (Annotation(..), ExtraInfo(..), InputState(..), SelectionHelper(..), Side(..))
 import Parser
 import Test exposing (..)
 
@@ -44,6 +44,16 @@ testCases =
     , ( "Rook takes with rank helper", "R1xe6", Moved Rook (WithRank Rank.r1) ( File.e, Rank.r6 ) [ Takes ] )
     , ( "Castles queen side", "0-0-0", Castled QueenSide )
     , ( "Castles king side", "0-0", Castled KingSide )
+    , ( "Extremely strong move"
+      , "Rxe6!!"
+      , Moved Rook NoSelectionHelper ( File.e, Rank.r6 ) [ Takes, Annotation ExtremelyStrongMove ]
+      )
+    , ( "Pawn promotion and equality annotation"
+      , "e8=Q="
+      , Moved Pawn NoSelectionHelper ( File.e, Rank.r8 ) [ PromotesTo Queen, Annotation Equality ]
+      )
+    , ( "White is winning annotation", "Re6+-", Moved Rook NoSelectionHelper ( File.e, Rank.r6 ) [ Annotation WhiteIsWinning ] )
+    , ( "Check and white is winning annotation", "Re6++-", Moved Rook NoSelectionHelper ( File.e, Rank.r6 ) [ Check, Annotation WhiteIsWinning ] )
     ]
 
 

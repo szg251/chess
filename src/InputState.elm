@@ -34,6 +34,24 @@ type Side
     | QueenSide
 
 
+type Annotation
+    = ExtremelyStrongMove
+    | GreatMove
+    | SpeculativeMove
+    | DubiousMove
+    | BadMove
+    | Blunder
+    | WhiteIsWinning
+    | WhiteHasSignificantEdge
+    | WhiteHasSmallEdge
+    | Equality
+    | UnclearAdvantage
+    | BlackHasSmallEdge
+    | BlackHasSignificantEdge
+    | BlackIsWinning
+    | OnlyMoveAvailable
+
+
 type SelectionHelper
     = NoSelectionHelper
     | WithFile File
@@ -71,15 +89,22 @@ type ExtraInfo
     | EnPassant
     | Check
     | Checkmate
+    | Annotation Annotation
 
 
 parser : Parser InputState
 parser =
     let
-        toMoved piece ( selectionHelper, maybeTakes, field ) maybePromotion maybeEnPassant maybeCheck =
+        toMoved piece ( selectionHelper, maybeTakes, field ) maybePromotion maybeEnPassant ( maybeCheck, maybeAnnotation ) =
             let
                 extraInfo =
-                    MaybeE.values [ maybeTakes, maybePromotion, maybeEnPassant, maybeCheck ]
+                    MaybeE.values
+                        [ maybeTakes
+                        , maybePromotion
+                        , maybeEnPassant
+                        , maybeCheck
+                        , maybeAnnotation
+                        ]
             in
             Moved piece selectionHelper field extraInfo
 
@@ -113,6 +138,42 @@ parser =
                     |. symbol "#"
                 , succeed Nothing
                 ]
+
+        annotationParser =
+            oneOf
+                [ succeed (Just ExtremelyStrongMove)
+                    |. symbol "!!"
+                , succeed (Just SpeculativeMove)
+                    |. symbol "!?"
+                , succeed (Just GreatMove)
+                    |. symbol "!"
+                , succeed (Just Blunder)
+                    |. symbol "??"
+                , succeed (Just DubiousMove)
+                    |. symbol "?!"
+                , succeed (Just BadMove)
+                    |. symbol "?"
+                , succeed (Just WhiteIsWinning)
+                    |. symbol "+-"
+                , succeed (Just BlackIsWinning)
+                    |. symbol "-+"
+                , succeed (Just WhiteHasSignificantEdge)
+                    |. symbol "+/-"
+                , succeed (Just BlackHasSignificantEdge)
+                    |. symbol "-/+"
+                , succeed (Just WhiteHasSmallEdge)
+                    |. symbol "+/="
+                , succeed (Just BlackHasSmallEdge)
+                    |. symbol "=+"
+                , succeed (Just OnlyMoveAvailable)
+                    |. symbol "□"
+                , succeed (Just Equality)
+                    |. symbol "="
+                , succeed (Just UnclearAdvantage)
+                    |. symbol "∞"
+                , succeed Nothing
+                ]
+                |> Parser.map (Maybe.map Annotation)
 
         inputStateEnd =
             oneOf
@@ -158,8 +219,16 @@ parser =
                 |= selectionHelperToTargetParser
                 |= promotionParser
                 |= enPassantParser
-                |= checkParser
-                |. inputStateEnd
+                |= oneOf
+                    [ succeed Tuple.pair
+                        |= backtrackable checkParser
+                        |= backtrackable annotationParser
+                        |. inputStateEnd
+                    , succeed Tuple.pair
+                        |= succeed Nothing
+                        |= annotationParser
+                        |. inputStateEnd
+                    ]
         , backtrackable <|
             succeed Selected
                 |= Piece.parser
@@ -199,49 +268,88 @@ getPromotesTo extraInfo =
             Nothing
 
 
-takes : List ExtraInfo -> Bool
-takes =
-    List.any ((==) Takes)
+hasInfo : ExtraInfo -> List ExtraInfo -> Bool
+hasInfo extraInfo =
+    List.any ((==) extraInfo)
 
 
-enPassant : List ExtraInfo -> Bool
-enPassant =
-    List.any ((==) EnPassant)
-
-
-check : List ExtraInfo -> Bool
-check =
-    List.any ((==) Check)
-
-
-checkmate : List ExtraInfo -> Bool
-checkmate =
-    List.any ((==) Checkmate)
+hasAnnotation : Annotation -> List ExtraInfo -> Bool
+hasAnnotation annotation =
+    List.any ((==) (Annotation annotation))
 
 
 serialize : InputState -> String
 serialize inputState =
     let
         serializeTakes extraInfo =
-            if takes extraInfo then
+            if hasInfo Takes extraInfo then
                 "x"
 
             else
                 ""
 
         serializeEnPassant extraInfo =
-            if enPassant extraInfo then
+            if hasInfo EnPassant extraInfo then
                 "e.p."
 
             else
                 ""
 
         serializeCheck extraInfo =
-            if check extraInfo then
+            if hasInfo Check extraInfo then
                 "+"
 
-            else if checkmate extraInfo then
+            else if hasInfo Checkmate extraInfo then
                 "#"
+
+            else
+                ""
+
+        serializeAnnotation extraInfo =
+            if hasAnnotation ExtremelyStrongMove extraInfo then
+                "!!"
+
+            else if hasAnnotation GreatMove extraInfo then
+                "!"
+
+            else if hasAnnotation SpeculativeMove extraInfo then
+                "!?"
+
+            else if hasAnnotation DubiousMove extraInfo then
+                "?!"
+
+            else if hasAnnotation BadMove extraInfo then
+                "?"
+
+            else if hasAnnotation Blunder extraInfo then
+                "??"
+
+            else if hasAnnotation WhiteIsWinning extraInfo then
+                "+-"
+
+            else if hasAnnotation WhiteHasSignificantEdge extraInfo then
+                "+/-"
+
+            else if hasAnnotation WhiteHasSmallEdge extraInfo then
+                "+/="
+
+            else if hasAnnotation Equality extraInfo then
+                "="
+
+            else if hasAnnotation UnclearAdvantage extraInfo then
+                "∞"
+
+            else if hasAnnotation BlackHasSmallEdge extraInfo then
+                "=+"
+
+            else if hasAnnotation BlackHasSignificantEdge extraInfo then
+                "-/+"
+
+            else if hasAnnotation BlackIsWinning extraInfo then
+                "-+"
+
+            else if hasAnnotation OnlyMoveAvailable extraInfo then
+                "□"
 
             else
                 ""
@@ -270,6 +378,7 @@ serialize inputState =
                 ++ serializePromotesTo extraInfo
                 ++ serializeEnPassant extraInfo
                 ++ serializeCheck extraInfo
+                ++ serializeAnnotation extraInfo
 
         Castled QueenSide ->
             "0-0-0"

@@ -151,16 +151,16 @@ move targetField selectionHelper extraInfo gameState selected =
                         otherPieces
             in
             if List.length taken == 0 then
-                if InputState.takes extraInfo || InputState.enPassant extraInfo then
+                if InputState.hasInfo Takes extraInfo || InputState.hasInfo EnPassant extraInfo then
                     Err "There is no piece to take."
 
                 else
                     Ok remained
 
-            else if not (InputState.takes extraInfo) then
+            else if not (InputState.hasInfo Takes extraInfo) then
                 Err "When you are taking an enemy piece, you need to use the x symbol. Ex.: Rxe6"
 
-            else if (List.length takenByEnPassant == 0) && InputState.enPassant extraInfo then
+            else if (List.length takenByEnPassant == 0) && InputState.hasInfo EnPassant extraInfo then
                 Err "This is not an en passant take."
 
             else if selected.name == Pawn && selectionHelper == NoSelectionHelper then

@@ -200,7 +200,11 @@ update msg model =
                                     }
 
                         Err err ->
-                            { model | error = Just "Couldn't parse history" }
+                            { model
+                                | error =
+                                    Just
+                                        ("Couldn't parse history: " ++ deadEndsToString err)
+                            }
             , Cmd.none
             )
 
@@ -336,7 +340,17 @@ loadHistory raw model =
                     }
 
         Err err ->
-            { model | error = Just "Couldn't parse history" }
+            { model | error = Just ("Couldn't parse history: " ++ deadEndsToString err) }
+
+
+deadEndsToString : List Parser.DeadEnd -> String
+deadEndsToString =
+    let
+        deadEndToString { row, col } =
+            "Problem at row " ++ String.fromInt row ++ " col " ++ String.fromInt col
+    in
+    List.map deadEndToString
+        >> String.join "\n"
 
 
 replayHistory : History -> Int -> Maybe ( Int, GameState )
